@@ -53,6 +53,30 @@ export function addressesMatch(typed: { miejscowosc: string; ulica: string; nume
   return fold(typed.miejscowosc) === fold(hit.miejscowosc) && streetName(typed.ulica) === streetName(hit.ulica) && fold(typed.numer_budynku) === fold(hit.numer_budynku);
 }
 
+/** The hit that matches the typed address exactly. A prefix such as "Warsz" does not select Warszawa. House numbers of one street stand in for that street when the number itself is not among them. */
+export function chooseHit(hits: RegistryAddress[], typed: { miejscowosc: string; ulica: string; numer_budynku: string }): RegistryAddress | null {
+  const city = fold(typed.miejscowosc);
+  const street = streetName(typed.ulica);
+  const number = fold(typed.numer_budynku);
+  const inCity = (hit: RegistryAddress) => fold(hit.miejscowosc) === city;
+  if (number && street) {
+    const house = hits.find(hit => hit.kind === 'adres' && inCity(hit) && streetName(hit.ulica) === street && fold(hit.numer_budynku) === number);
+    if (house) return house;
+  }
+  if (street) {
+    const road = hits.find(hit => hit.kind === 'ulica' && inCity(hit) && streetName(hit.ulica) === street);
+    if (road) return road;
+    const houses = hits.filter(hit => hit.kind === 'adres' && inCity(hit) && streetName(hit.ulica) === street);
+    if (houses.length) {
+      const lat = houses.reduce((sum, hit) => sum + hit.szerokosc_geograficzna, 0) / houses.length;
+      const lon = houses.reduce((sum, hit) => sum + hit.dlugosc_geograficzna, 0) / houses.length;
+      return { ...houses[0], kind: 'ulica', numer_budynku: '', kod_pocztowy: singlePostcode(houses.map(hit => hit.kod_pocztowy)), szerokosc_geograficzna: lat, dlugosc_geograficzna: lon, label: `${houses[0].ulica}, ${houses[0].miejscowosc}` };
+    }
+  }
+  if (!city) return null;
+  return hits.find(hit => hit.kind === 'miejscowosc' && inCity(hit)) ?? null;
+}
+
 /** Query for the field the person is typing in. City, then street, then house number. */
 export function fieldSuggestionQuery(field: 'miejscowosc' | 'ulica' | 'numer_budynku', d: { miejscowosc: string; ulica: string; numer_budynku: string }): string | null {
   const city = d.miejscowosc.trim();

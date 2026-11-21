@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeafletService } from '@app/services/leflet.service';
 import type { LayerGroup, LeafletMouseEvent, Map } from 'leaflet';
-import { fieldSuggestionQuery, RegistryAddress, registryQuery, suggestRegistry, terytFromRegistry } from './aed-address';
+import { chooseHit, fieldSuggestionQuery, RegistryAddress, suggestRegistry, terytFromRegistry } from './aed-address';
 import { AED_COLUMNS, AedColumn, AedDevice, DOSTEPNOSC_LABELS, FIELD_LABELS, STAN_LABELS } from './aed.models';
 import { formatHours, suggestTeryt, terytFollowsPlace, toOpeningHours, today, validateDevice, validOpeningHours } from './aed.logic';
 
@@ -16,21 +16,20 @@ type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
       <ng-container *ngFor="let f of locationFields">
       <div class="aed-field" [class.wide]="f==='nazwa_miejsca'||f==='opis_lokalizacji'">
         <label [for]="prefix+f">{{labels[f]}} <span class="aed-required" *ngIf="required(f)">(wymagane)</span></label>
-        <textarea *ngIf="f==='opis_lokalizacji'" [id]="prefix+f" [(ngModel)]="$any(device)[f]" (ngModelChange)="changed.emit()" rows="3" maxlength="1000" [attr.aria-invalid]="hasError(f)" [attr.aria-describedby]="prefix+f+'-hint'"></textarea>
+        <textarea *ngIf="f==='opis_lokalizacji'" [id]="prefix+f" [(ngModel)]="$any(device)[f]" (ngModelChange)="changed.emit()" rows="3" maxlength="1000" [attr.aria-invalid]="hasError(f)" [attr.aria-describedby]="message(f)?prefix+f+'-hint':null"></textarea>
         <div class="aed-combobox" *ngIf="f!=='opis_lokalizacji'">
-          <input [id]="prefix+f" type="text" autocomplete="off" [(ngModel)]="$any(device)[f]" (ngModelChange)="onText(f)" [attr.maxlength]="f==='kod_pocztowy'?6:f==='teryt_gminy'?7:200" [attr.inputmode]="f==='teryt_gminy'?'numeric':null" [attr.aria-invalid]="hasError(f)" [attr.aria-describedby]="prefix+f+'-hint'" [attr.aria-expanded]="suggestField===f && fieldHits.length ? true : null" role="combobox" aria-autocomplete="list" [attr.aria-controls]="suggestField===f && fieldHits.length ? prefix+f+'-list' : null" />
+          <input [id]="prefix+f" type="text" autocomplete="off" [(ngModel)]="$any(device)[f]" (ngModelChange)="onText(f)" [attr.maxlength]="f==='kod_pocztowy'?6:f==='teryt_gminy'?7:200" [attr.inputmode]="f==='teryt_gminy'?'numeric':null" [attr.aria-invalid]="hasError(f)" [attr.aria-describedby]="message(f)?prefix+f+'-hint':null" [attr.aria-expanded]="suggestField===f && fieldHits.length ? true : null" role="combobox" aria-autocomplete="list" [attr.aria-controls]="suggestField===f && fieldHits.length ? prefix+f+'-list' : null" />
           <ul class="aed-address-hits" *ngIf="suggestField===f && fieldHits.length" role="listbox" [id]="prefix+f+'-list'"><li *ngFor="let hit of fieldHits" role="presentation"><button type="button" role="option" (mousedown)="$event.preventDefault()" (click)="pickSuggestion(hit)"><span>{{hitTitle(hit)}}</span><span class="aed-hit-meta" *ngIf="hitMeta(hit)">{{hitMeta(hit)}}</span></button></li></ul>
         </div>
-        <small [id]="prefix+f+'-hint'" [class.aed-error]="hasError(f)" [class.aed-warning-text]="!hasError(f)&&!!message(f)">{{message(f) || hints[f]}}</small>
+        <small *ngIf="message(f)" [id]="prefix+f+'-hint'" [class.aed-error]="hasError(f)" [class.aed-warning-text]="!hasError(f)">{{message(f)}}</small>
       </div>
       <div class="aed-field wide aed-locate" *ngIf="f==='kod_pocztowy'">
-        <p class="aed-muted">Znajdź lokalizację wpisanego adresu, a potem kliknij mapę w miejscu, gdzie stoi urządzenie.</p>
         <button type="button" class="aed-button secondary" (click)="findOnMap()" [disabled]="busy">Znajdź lokalizację</button>
         <p class="aed-registry" [class.ok]="statusKind==='ok'" [class.warn]="statusKind==='warn'" role="status" *ngIf="status">{{status}}</p>
         <div #picker class="aed-picker-map" role="application" aria-label="Mapa. Kliknij, aby ustawić położenie urządzenia."></div>
         <div class="aed-form-grid">
-          <div class="aed-field"><label [for]="prefix+'szerokosc_geograficzna'">{{labels['szerokosc_geograficzna']}} <span class="aed-required">(wymagane)</span></label><input [id]="prefix+'szerokosc_geograficzna'" type="text" inputmode="decimal" autocomplete="off" [ngModel]="raw['szerokosc_geograficzna']" (ngModelChange)="setCoord('szerokosc_geograficzna', $event)" [attr.aria-invalid]="hasError('szerokosc_geograficzna')" [attr.aria-describedby]="prefix+'szerokosc_geograficzna-hint'" /><small [id]="prefix+'szerokosc_geograficzna-hint'" [class.aed-error]="hasError('szerokosc_geograficzna')">{{message('szerokosc_geograficzna') || 'Albo wpisz ręcznie, np. 53.1235.'}}</small></div>
-          <div class="aed-field"><label [for]="prefix+'dlugosc_geograficzna'">{{labels['dlugosc_geograficzna']}} <span class="aed-required">(wymagane)</span></label><input [id]="prefix+'dlugosc_geograficzna'" type="text" inputmode="decimal" autocomplete="off" [ngModel]="raw['dlugosc_geograficzna']" (ngModelChange)="setCoord('dlugosc_geograficzna', $event)" [attr.aria-invalid]="hasError('dlugosc_geograficzna')" [attr.aria-describedby]="prefix+'dlugosc_geograficzna-hint'" /><small [id]="prefix+'dlugosc_geograficzna-hint'" [class.aed-error]="hasError('dlugosc_geograficzna')">{{message('dlugosc_geograficzna') || 'Albo wpisz ręcznie, np. 18.0084.'}}</small></div>
+          <div class="aed-field"><label [for]="prefix+'szerokosc_geograficzna'">{{labels['szerokosc_geograficzna']}} <span class="aed-required">(wymagane)</span></label><input [id]="prefix+'szerokosc_geograficzna'" type="text" inputmode="decimal" autocomplete="off" [ngModel]="raw['szerokosc_geograficzna']" (ngModelChange)="setCoord('szerokosc_geograficzna', $event)" [attr.aria-invalid]="hasError('szerokosc_geograficzna')" [attr.aria-describedby]="message('szerokosc_geograficzna')?prefix+'szerokosc_geograficzna-hint':null" /><small *ngIf="message('szerokosc_geograficzna')" [id]="prefix+'szerokosc_geograficzna-hint'" [class.aed-error]="hasError('szerokosc_geograficzna')" [class.aed-warning-text]="!hasError('szerokosc_geograficzna')">{{message('szerokosc_geograficzna')}}</small></div>
+          <div class="aed-field"><label [for]="prefix+'dlugosc_geograficzna'">{{labels['dlugosc_geograficzna']}} <span class="aed-required">(wymagane)</span></label><input [id]="prefix+'dlugosc_geograficzna'" type="text" inputmode="decimal" autocomplete="off" [ngModel]="raw['dlugosc_geograficzna']" (ngModelChange)="setCoord('dlugosc_geograficzna', $event)" [attr.aria-invalid]="hasError('dlugosc_geograficzna')" [attr.aria-describedby]="message('dlugosc_geograficzna')?prefix+'dlugosc_geograficzna-hint':null" /><small *ngIf="message('dlugosc_geograficzna')" [id]="prefix+'dlugosc_geograficzna-hint'" [class.aed-error]="hasError('dlugosc_geograficzna')" [class.aed-warning-text]="!hasError('dlugosc_geograficzna')">{{message('dlugosc_geograficzna')}}</small></div>
         </div>
       </div>
       </ng-container>
@@ -50,7 +49,7 @@ type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
       <small class="aed-error">{{error('uwagi_dostepu')}}</small>
     </div>
   </div></fieldset>
-  <fieldset class="aed-fieldset"><legend>Terminy i weryfikacja</legend><p class="aed-muted">Jeśli nie znasz daty, pozostaw pole puste. Upływ terminu nie usuwa urządzenia ze zbioru, ale oznacza je jako wymagające sprawdzenia.</p><div class="aed-form-grid">
+  <fieldset class="aed-fieldset"><legend>Terminy i weryfikacja</legend><p class="aed-muted">Data ważności baterii i elektrod jest wymagana do publikacji, tak jak numer seryjny. Termin przeglądu możesz zostawić pusty. Upłynięty termin zostawia urządzenie w zbiorze i oznacza je do sprawdzenia.</p><div class="aed-form-grid">
     <div class="aed-field" *ngFor="let f of dates"><label [for]="prefix+f">{{labels[f]}} <span class="aed-required" *ngIf="required(f)">(wymagane do publikacji)</span></label><input type="date" [id]="prefix+f" [(ngModel)]="$any(device)[f]" (ngModelChange)="changed.emit()" [attr.max]="f==='data_weryfikacji'?now:null" [attr.aria-invalid]="hasError(f)"/><small [class.aed-error]="hasError(f)" [class.aed-warning-text]="!hasError(f)">{{message(f)}}</small></div>
   </div></fieldset>
   <fieldset class="aed-fieldset"><legend>Identyfikacja urządzenia</legend><div class="aed-form-grid">
@@ -67,9 +66,10 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
   labels=FIELD_LABELS; access=DOSTEPNOSC_LABELS; states=STAN_LABELS; accessKeys=Object.keys(DOSTEPNOSC_LABELS); stateKeys=Object.keys(STAN_LABELS); now=today();
   locationFields:AedColumn[]=['nazwa_miejsca','miejscowosc','teryt_gminy','ulica','numer_budynku','kod_pocztowy','opis_lokalizacji'];
   dates:AedColumn[]=['data_waznosci_baterii','data_waznosci_elektrod','data_przegladu','data_weryfikacji'];
-  hints:Record<string,string>={nazwa_miejsca:'Np. Biblioteka Miejska — wejście główne',miejscowosc:'Zacznij pisać i wybierz miejscowość z listy. Kod TERYT uzupełni się sam.',teryt_gminy:'7 cyfr. Uzupełnia się po wyborze miejscowości.',ulica:'Zacznij pisać po wyborze miejscowości. Puste, jeśli miejscowość nie ma ulic.',numer_budynku:'Wybierz numer z listy, żeby doprecyzować kod pocztowy.',kod_pocztowy:'Uzupełnia się po wyborze miejscowości, ulicy albo numeru. Format 00-000.',opis_lokalizacji:'Wejście, piętro, recepcja lub położenie skrzynki.'};
   raw:Record<string,string>={}; fieldHits:RegistryAddress[]=[]; suggestField=''; placePoint:{miejscowosc:string;lat:number;lon:number}|null=null; postalPlace=''; status=''; statusKind:'ok'|'warn'|''=''; busy=false;
-  private suggestTimer=0; private suggestGen=0;
+  private suggestTimer=0; private suggestGen=0; private locateTimer=0; private locateGen=0;
+  private lastHit:RegistryAddress|null=null; private resolvedKey=''; private postalAuto=false; private coordsAuto=false;
+  private locationCache:{street:RegistryAddress|null;city:RegistryAddress|null}={street:null,city:null};
   ngOnChanges(changes:SimpleChanges){
     this.raw={szerokosc_geograficzna:this.coordText(this.device.szerokosc_geograficzna),dlugosc_geograficzna:this.coordText(this.device.dlugosc_geograficzna)};
     if(changes['device'] && !changes['device'].firstChange){ this.fieldHits=[]; this.suggestField=''; this.clearStatus(); }
@@ -85,9 +85,9 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.placeMarker(true);
     setTimeout(()=>this.map?.invalidateSize(),0);
   }
-  ngOnDestroy(){ window.clearTimeout(this.suggestTimer); this.suggestGen++; this.map?.remove(); }
+  ngOnDestroy(){ window.clearTimeout(this.suggestTimer); window.clearTimeout(this.locateTimer); this.suggestGen++; this.locateGen++; this.map?.remove(); }
   private coordText(v:number|null){ return v===null||v===undefined||!Number.isFinite(v)?'':String(v); }
-  setCoord(f:Coord, value:string){ this.raw[f]=value; const v=value.trim().replace(',','.'); this.device[f]=v===''?null:/^-?\d+(\.\d+)?$/.test(v)?Number(v):NaN; this.placeMarker(false); this.changed.emit(); }
+  setCoord(f:Coord, value:string){ this.coordsAuto=false; this.raw[f]=value; const v=value.trim().replace(',','.'); this.device[f]=v===''?null:/^-?\d+(\.\d+)?$/.test(v)?Number(v):NaN; this.placeMarker(false); this.changed.emit(); }
   pick(lat:number, lon:number){ this.setCoord('szerokosc_geograficzna',lat.toFixed(6)); this.setCoord('dlugosc_geograficzna',lon.toFixed(6)); this.placeMarker(true); }
   private placeMarker(pan:boolean){
     if(!this.map||!this.layer)return;
@@ -98,26 +98,25 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
     if(pan)this.map.setView([lat as number,lon as number],19);
   }
   apply(hit:RegistryAddress){
-    this.remember(hit);
     this.device.miejscowosc=hit.miejscowosc;
     this.device.ulica=hit.ulica?`ul. ${hit.ulica}`:'';
     this.device.numer_budynku=hit.numer_budynku;
-    this.adoptPostal(hit, false);
     this.writeTeryt(hit.miejscowosc, hit.teryt);
     if(!this.device.teryt_gminy) void this.completeTeryt(hit.miejscowosc);
-    this.setCoord('szerokosc_geograficzna',hit.szerokosc_geograficzna.toFixed(6));
-    this.setCoord('dlugosc_geograficzna',hit.dlugosc_geograficzna.toFixed(6));
-    this.placeMarker(true);
+    this.applyResolved(hit);
     this.clearStatus();
-    this.changed.emit();
   }
   private clearStatus(){ this.status=''; this.statusKind=''; }
   private report(text:string, kind:'ok'|'warn'|''){ this.status=text; this.statusKind=kind; }
   private async run(pending:string, task:()=>Promise<void>){ this.busy=true; this.report(pending,''); try{ await task(); }catch(e){ this.report(e instanceof Error?e.message:'Nie udało się sprawdzić adresu.','warn'); } finally{ this.busy=false; } }
   onText(f:string){
     if(f==='miejscowosc'){ this.syncTeryt(this.device.miejscowosc); this.syncPostal(this.device.miejscowosc); }
-    if(f==='kod_pocztowy') this.postalPlace='';
-    if(f==='miejscowosc'||f==='ulica'||f==='numer_budynku') this.scheduleField(f);
+    if(f==='kod_pocztowy'){ this.postalPlace=''; this.postalAuto=false; }
+    if(f==='miejscowosc'||f==='ulica'||f==='numer_budynku'){
+      if(this.lastHit && !this.resolvedStillFits()) this.clearAutoLocation();
+      this.scheduleField(f);
+      this.scheduleLocate();
+    }
     else if(this.suggestField===f){ this.fieldHits=[]; this.suggestField=''; }
     this.changed.emit();
   }
@@ -140,50 +139,128 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
     }catch{ if(gen===this.suggestGen) this.fieldHits=[]; }
   }
   pickSuggestion(hit:RegistryAddress){
+    window.clearTimeout(this.locateTimer); this.locateGen++;
     if(hit.kind==='adres'){ this.fieldHits=[]; this.suggestField=''; this.apply(hit); return; }
     if(this.suggestField==='miejscowosc'||hit.kind==='miejscowosc'){
-      this.remember(hit);
       this.device.miejscowosc=hit.miejscowosc;
       this.writeTeryt(hit.miejscowosc, hit.teryt);
-      this.adoptPostal(hit, true);
-      this.focusMap(hit);
+      this.applyResolved(hit);
       this.fieldHits=[]; this.suggestField='';
-      this.changed.emit();
       if(!this.device.teryt_gminy) void this.completeTeryt(hit.miejscowosc);
       return;
     }
-    this.remember(hit);
     this.device.ulica=hit.ulica?`ul. ${hit.ulica}`:this.device.ulica;
-    this.adoptPostal(hit, false);
-    this.focusMap(hit);
+    this.applyResolved(hit);
     this.fieldHits=[]; this.suggestField='';
-    this.changed.emit();
   }
   private remember(hit:RegistryAddress){ this.placePoint={miejscowosc:hit.miejscowosc,lat:hit.szerokosc_geograficzna,lon:hit.dlugosc_geograficzna}; }
   hitTitle(hit:RegistryAddress){ const cut=hit.label.indexOf(', '); return cut<0?hit.label:hit.label.slice(0,cut); }
   hitMeta(hit:RegistryAddress){ const cut=hit.label.indexOf(', '); return cut<0?'':hit.label.slice(cut+2); }
   private writeTeryt(miejscowosc:string, registryCode=''){ this.device.teryt_gminy=terytFromRegistry(miejscowosc, registryCode)||suggestTeryt(miejscowosc); }
   private adoptPostal(hit:RegistryAddress, replace:boolean){
-    if(/^\d{2}-\d{3}$/.test(hit.kod_pocztowy)){ this.device.kod_pocztowy=hit.kod_pocztowy; this.postalPlace=hit.miejscowosc.trim().toLocaleLowerCase('pl'); }
-    else if(replace){ this.device.kod_pocztowy=''; this.postalPlace=''; }
+    if(/^\d{2}-\d{3}$/.test(hit.kod_pocztowy)){ this.device.kod_pocztowy=hit.kod_pocztowy; this.postalPlace=hit.miejscowosc.trim().toLocaleLowerCase('pl'); this.postalAuto=true; return; }
+    const same=this.postalPlace===hit.miejscowosc.trim().toLocaleLowerCase('pl');
+    if(replace || !same){ this.device.kod_pocztowy=''; this.postalPlace=''; this.postalAuto=true; }
   }
   private syncPostal(miejscowosc:string){
     const typed=miejscowosc.trim().toLocaleLowerCase('pl');
     if(!this.postalPlace) return;
-    if(!typed || !(this.postalPlace.startsWith(typed) || typed.startsWith(this.postalPlace))){ this.device.kod_pocztowy=''; this.postalPlace=''; }
+    if(!typed || !(this.postalPlace.startsWith(typed) || typed.startsWith(this.postalPlace))){ this.device.kod_pocztowy=''; this.postalPlace=''; this.postalAuto=false; }
   }
-  private focusMap(hit:RegistryAddress){ this.map?.setView([hit.szerokosc_geograficzna, hit.dlugosc_geograficzna], 19); }
+  private scheduleLocate(){ window.clearTimeout(this.locateTimer); this.locateTimer=window.setTimeout(()=>void this.locateFromFields(), 400); }
+  private async locateFromFields(){
+    const gen=++this.locateGen;
+    const typed=this.typedAddress();
+    if(typed.miejscowosc.trim().length<3){ this.clearAutoLocation(); return; }
+    try{
+      const hit=await this.resolveLocation(typed, false);
+      if(gen!==this.locateGen || !this.sameAddress(typed)) return;
+      if(!hit){ if(!this.resolvedStillFits()) this.clearAutoLocation(); return; }
+      this.applyResolved(hit);
+      this.clearStatus();
+    }catch{ /* the next edit tries again; a failed lookup does not wipe a point already set */ }
+  }
+  private typedAddress(){ return {miejscowosc:this.device.miejscowosc, ulica:this.device.ulica, numer_budynku:this.device.numer_budynku}; }
+  private sameAddress(typed:{miejscowosc:string;ulica:string;numer_budynku:string}){ return this.device.miejscowosc===typed.miejscowosc && this.device.ulica===typed.ulica && this.device.numer_budynku===typed.numer_budynku; }
+  private async resolveLocation(typed:{miejscowosc:string;ulica:string;numer_budynku:string}, force:boolean): Promise<RegistryAddress|null>{
+    const near=this.nearFor(typed.miejscowosc);
+    const city=typed.miejscowosc.trim().toLocaleLowerCase('pl');
+    const street=typed.ulica.trim().toLocaleLowerCase('pl').replace(/^(ul\.|ulica|al\.|aleja|pl\.|plac|os\.|osiedle)\s+/,'');
+    const numberQuery=fieldSuggestionQuery('numer_budynku', typed);
+    if(numberQuery){
+      const house=chooseHit(await suggestRegistry(numberQuery, near), typed);
+      if(house) return house;
+    }
+    const streetQuery=fieldSuggestionQuery('ulica', typed);
+    if(streetQuery){
+      const cached=this.locationCache.street;
+      const fresh=force || !cached || cached.miejscowosc.trim().toLocaleLowerCase('pl')!==city || cached.ulica.trim().toLocaleLowerCase('pl')!==street;
+      if(fresh) this.locationCache.street=chooseHit(await suggestRegistry(streetQuery, near), typed);
+      const road=this.locationCache.street;
+      if(road && road.miejscowosc.trim().toLocaleLowerCase('pl')===city && road.ulica.trim().toLocaleLowerCase('pl')===street) return road;
+    } else this.locationCache.street=null;
+    const cityQuery=fieldSuggestionQuery('miejscowosc', typed);
+    if(!cityQuery) return null;
+    const cachedCity=this.locationCache.city;
+    if(force || !cachedCity || cachedCity.miejscowosc.trim().toLocaleLowerCase('pl')!==city) this.locationCache.city=chooseHit(await suggestRegistry(cityQuery), typed);
+    const found=this.locationCache.city;
+    return found && found.miejscowosc.trim().toLocaleLowerCase('pl')===city ? found : null;
+  }
+  private nearFor(miejscowosc:string){ return this.placePoint && this.placePoint.miejscowosc.toLocaleLowerCase('pl')===miejscowosc.trim().toLocaleLowerCase('pl') ? {lat:this.placePoint.lat, lon:this.placePoint.lon} : undefined; }
+  private applyResolved(hit:RegistryAddress){
+    const key=[hit.kind, hit.miejscowosc, hit.ulica, hit.numer_budynku, hit.kod_pocztowy, hit.szerokosc_geograficzna.toFixed(6), hit.dlugosc_geograficzna.toFixed(6)].join('|');
+    this.remember(hit);
+    this.lastHit=hit;
+    if(hit.kind==='ulica') this.locationCache.street=hit;
+    if(hit.kind==='miejscowosc') this.locationCache.city=hit;
+    this.adoptPostal(hit, hit.kind==='miejscowosc');
+    if(key===this.resolvedKey) return;
+    this.resolvedKey=key;
+    this.writeCoords(hit.szerokosc_geograficzna, hit.dlugosc_geograficzna);
+  }
+  private writeCoords(lat:number, lon:number){
+    this.coordsAuto=true;
+    this.raw['szerokosc_geograficzna']=lat.toFixed(6);
+    this.raw['dlugosc_geograficzna']=lon.toFixed(6);
+    this.device.szerokosc_geograficzna=Number(lat.toFixed(6));
+    this.device.dlugosc_geograficzna=Number(lon.toFixed(6));
+    this.placeMarker(true);
+    this.changed.emit();
+  }
+  private clearAutoLocation(){
+    this.resolvedKey=''; this.lastHit=null;
+    if(this.postalAuto){ this.device.kod_pocztowy=''; this.postalPlace=''; this.postalAuto=false; }
+    if(this.coordsAuto){
+      this.coordsAuto=false;
+      this.device.szerokosc_geograficzna=null; this.device.dlugosc_geograficzna=null;
+      this.raw['szerokosc_geograficzna']=''; this.raw['dlugosc_geograficzna']='';
+      this.placeMarker(false);
+    }
+  }
+  private resolvedStillFits(){
+    const hit=this.lastHit;
+    if(!hit) return false;
+    const city=this.device.miejscowosc.trim().toLocaleLowerCase('pl');
+    const locCity=hit.miejscowosc.trim().toLocaleLowerCase('pl');
+    if(!city || !(locCity.startsWith(city) || city.startsWith(locCity))) return false;
+    const street=this.device.ulica.trim().toLocaleLowerCase('pl').replace(/^(ul\.|ulica|al\.|aleja|pl\.|plac|os\.|osiedle)\s+/,'');
+    const locStreet=hit.ulica.trim().toLocaleLowerCase('pl');
+    if(locStreet && (!street || !(locStreet.startsWith(street) || street.startsWith(locStreet)))) return false;
+    const number=this.device.numer_budynku.trim().toLocaleLowerCase('pl');
+    const locNumber=hit.numer_budynku.trim().toLocaleLowerCase('pl');
+    if(locNumber && (!number || !(locNumber.startsWith(number) || number.startsWith(locNumber)))) return false;
+    return true;
+  }
   async findOnMap(){
     if(this.device.miejscowosc.trim().length<3){ this.report('Wpisz miejscowość, a potem znajdź lokalizację.','warn'); return; }
-    const near=this.placePoint && this.placePoint.miejscowosc.toLocaleLowerCase('pl')===this.device.miejscowosc.trim().toLocaleLowerCase('pl') ? {lat:this.placePoint.lat, lon:this.placePoint.lon} : undefined;
+    window.clearTimeout(this.locateTimer); this.locateGen++;
+    const typed=this.typedAddress();
     await this.run('Szukam lokalizacji…', async()=>{
-      const hits=await suggestRegistry(registryQuery(this.device), near);
-      const hit=hits.find(item=>item.kind==='adres') || hits[0];
+      const hit=await this.resolveLocation(typed, true);
+      if(!this.sameAddress(typed)) return;
       if(!hit){ this.report('Nie znaleziono lokalizacji dla wpisanego adresu.','warn'); return; }
-      this.remember(hit);
-      this.adoptPostal(hit, false);
-      this.focusMap(hit);
-      this.report('Mapa pokazuje ten adres. Kliknij punkt, w którym stoi urządzenie.','ok');
+      this.applyResolved(hit);
+      this.report('Ustawiono punkt dla tego adresu. Kliknij mapę, żeby go poprawić.','ok');
     });
   }
   private syncTeryt(miejscowosc:string){

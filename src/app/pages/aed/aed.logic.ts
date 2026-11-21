@@ -69,7 +69,7 @@ export function validateDevice(d: AedRow, now = today()): Issue[] {
   if (!serial) error('numer_seryjny', 'Podaj numer seryjny z obudowy urządzenia.');
   else if (serial.length < 3 || serial.length > 64 || !/^[A-Za-z0-9][A-Za-z0-9 ./-]*$/.test(serial)) error('numer_seryjny', 'Numer seryjny może mieć od 3 do 64 znaków: litery, cyfry, myślnik, kropkę i ukośnik.');
   if (!/^\d{2}-\d{3}$/.test(d.kod_pocztowy)) error('kod_pocztowy', 'Kod pocztowy musi mieć format 00-000.');
-  if (!d.teryt_gminy) warn('teryt_gminy', 'Brak kodu TERYT gminy. Uzupełnij go albo wybierz znaną miejscowość.');
+  if (!d.teryt_gminy) error('teryt_gminy', 'Podaj kod TERYT gminy.');
   else if (!/^\d{7}$/.test(d.teryt_gminy)) error('teryt_gminy', 'Kod TERYT gminy ma 7 cyfr, np. 0461011.');
   const lat = d.szerokosc_geograficzna, lon = d.dlugosc_geograficzna;
   if (lat === null || !Number.isFinite(lat) || lat < 49 || lat > 55) error('szerokosc_geograficzna', 'Podaj szerokość geograficzną w Polsce (49–55), np. 53.1215.');
@@ -87,8 +87,8 @@ export function validateDevice(d: AedRow, now = today()): Issue[] {
   }
   if (d.data_weryfikacji && d.data_weryfikacji > now) error('data_weryfikacji', 'Weryfikacja nie może mieć przyszłej daty.');
   if (!d.data_weryfikacji) warn('data_weryfikacji', 'Brak daty weryfikacji danych.');
-  if (!d.data_waznosci_baterii) warn('data_waznosci_baterii', 'Brak daty ważności baterii.');
-  if (!d.data_waznosci_elektrod) warn('data_waznosci_elektrod', 'Brak daty ważności elektrod.');
+  if (!d.data_waznosci_baterii) error('data_waznosci_baterii', 'Podaj datę ważności baterii.');
+  if (!d.data_waznosci_elektrod) error('data_waznosci_elektrod', 'Podaj datę ważności elektrod.');
   if (d.dostepnosc === 'nieznana') warn('dostepnosc', 'Dostęp do urządzenia nie został potwierdzony.');
   return issues;
 }

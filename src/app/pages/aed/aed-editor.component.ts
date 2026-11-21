@@ -31,8 +31,7 @@ export class AedEditorComponent implements OnInit {
   }
   save(status:StatusRekordu){
     this.attempted=true;this.error='';
-    if(!this.device.nazwa_miejsca.trim()){this.error='Podaj przynajmniej nazwę miejsca.';return;}
-    if(status==='published'&&validateDevice(this.device).some(i=>i.severity==='error')){this.error='Uzupełnij zaznaczone pola przed publikacją.';return;}
+    if(status==='published'&&validateDevice(this.device).some(i=>i.severity==='error'))return;
     if(status==='published'&&!this.confirmed){this.error='Potwierdź zgodność danych przed publikacją.';return;}
     this.saving=true;
     this.repo.save({...this.device,status}).subscribe({next:()=>this.router.navigate(['/pl/aed/panel'],{queryParams:{saved:status}}),error:e=>{this.saving=false;this.error=e.error?.message||e.message||'Nie udało się zapisać danych. Spróbuj ponownie.';}});

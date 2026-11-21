@@ -36,8 +36,8 @@ Do dysponenta przypisani są użytkownicy portalu, którzy mogą edytować tylko
 | godziny_dostepnosci | tekst, format opening_hours | dysponent | gdy dostępność to `w_godzinach` |
 | uwagi_dostepu | tekst | dysponent | gdy dostępność to `ograniczona` |
 | stan_urzadzenia | `sprawne` \| `niesprawne` \| `nieznany` | dysponent | tak |
-| data_waznosci_baterii | data `RRRR-MM-DD` | dysponent | nie |
-| data_waznosci_elektrod | data `RRRR-MM-DD` | dysponent | nie |
+| data_waznosci_baterii | data `RRRR-MM-DD` | dysponent | tak |
+| data_waznosci_elektrod | data `RRRR-MM-DD` | dysponent | tak |
 | data_przegladu | data `RRRR-MM-DD` | dysponent | nie |
 | data_weryfikacji | data `RRRR-MM-DD` | dysponent | tak |
 | zrodlo_danych | `formularz` \| `import_csv` \| `zbior_dostawcy` | system | tak |
