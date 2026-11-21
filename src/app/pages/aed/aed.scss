@@ -23,6 +23,8 @@ html[class*="black-"] .aed-module,html[class*="yellow-"] .aed-module,body[class*
 .aed-address-hits button:focus-visible{outline-offset:-3px}
 .aed-hit-meta{flex:0 0 auto;color:#3d3d3d;font-size:.85rem}
 .aed-registry{margin:8px 0}.aed-registry.ok{color:var(--aed-green)}.aed-registry.warn{color:#8a5a00}
+.aed-map.leaflet-container .leaflet-control-zoom a{width:30px;height:30px;line-height:30px;text-decoration:none}
+.aed-you.leaflet-marker-icon{background:#53BAA8;border:3px solid #2A337B;border-radius:50%;box-shadow:0 0 0 6px rgba(83,186,168,.35)}
 .aed-pin.leaflet-marker-icon{background:url('/assets/aed/mapa-aed-signet.svg') center/contain no-repeat;border:0}
 .aed-pin.is-active.leaflet-marker-icon{filter:drop-shadow(0 0 1px #53BAA8) drop-shadow(0 0 3px #53BAA8)}
 .aed-pin.is-down.leaflet-marker-icon{filter:grayscale(1) opacity(.45)}
