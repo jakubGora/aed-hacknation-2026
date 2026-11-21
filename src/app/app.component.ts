@@ -1,4 +1,3 @@
-import { AedDemoBannerComponent } from './pages/aed/demo/aed-demo-banner.component';
 import { DOCUMENT, isPlatformBrowser, PlatformLocation } from '@angular/common';
 import { Component, inject, OnInit, PLATFORM_ID, Renderer2 } from '@angular/core';
 import { NavigationEnd, NavigationStart, Router, RouterOutlet } from '@angular/router';
@@ -20,7 +19,7 @@ import { FavouritePostLoginService } from '@app/services/favourite-intent/favour
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  imports: [RouterOutlet, FavouriteToastComponent, AedDemoBannerComponent],
+  imports: [RouterOutlet, FavouriteToastComponent],
   standalone: true,
 })
 export class AppComponent implements OnInit {

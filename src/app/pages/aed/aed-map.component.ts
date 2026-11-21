@@ -7,7 +7,7 @@ import { AedRow } from './aed.models';
 type Located = AedRow & { szerokosc_geograficzna: number; dlugosc_geograficzna: number };
 export type MapPoint = { lat: number; lon: number };
 
-@Component({selector:'aed-map',standalone:true,template:`<div #map class="aed-map" role="region" aria-label="Mapa urządzeń AED. Te same informacje są dostępne na liście obok."></div><p class="aed-map-caption">Podkład: OpenStreetMap. Punkty demonstracyjne nie potwierdzają lokalizacji rzeczywistych AED.</p>`,providers:[LeafletService]})
+@Component({selector:'aed-map',standalone:true,template:`<div #map class="aed-map" role="region" aria-label="Mapa urządzeń AED. Te same informacje są dostępne na liście obok."></div><p class="aed-map-caption">Podkład: OpenStreetMap.</p>`,providers:[LeafletService]})
 export class AedMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('map',{static:true}) element!: ElementRef;
   @Input() devices: AedRow[] = [];

@@ -15,6 +15,7 @@
   <router-outlet></router-outlet>
 </main>
 
-<!-- application footer for the entire app (except embedded view) -->
-<app-footer></app-footer>
+@if (showPortalFooter) {
+  <app-footer></app-footer>
+}
 <app-tour-button></app-tour-button>

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { LocalizeRouterService } from '@gilsdav/ngx-translate-router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -8,6 +8,7 @@ import { NgProgressRouter } from 'ngx-progressbar/router';
 import { filter, take } from 'rxjs/operators';
 
 import { FooterComponent } from '@app/layout/footer/footer.component';
+import { AED_CONFIG } from '@app/pages/aed/aed.repository';
 import { HeaderComponent } from '@app/layout/header/header.component';
 import { RoutingHelper } from '@app/services/commons/routing-helper';
 import { TourButtonComponent } from '@app/shared/tour/tour-button/tour-button.component';
@@ -34,6 +35,7 @@ import { TourPickerComponent } from '@app/shared/tour/tour-picker/tour-picker.co
 })
 export class MainLayoutComponent {
   isHomepage: boolean;
+  readonly showPortalFooter = !inject(AED_CONFIG).demo;
 
   /**
    * Checks wheater it is homepage or any other page

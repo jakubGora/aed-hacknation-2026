@@ -19,7 +19,7 @@ import { AedMapComponent } from './aed-map.component';
    <dt>Źródło danych</dt><dd>{{sources[d.zrodlo_danych]}}</dd>
    <dt>Aktualizacja rekordu</dt><dd>{{d.data_aktualizacji|date:'dd.MM.yyyy HH:mm'}}</dd>
  </dl><details><summary>Terminy serwisowe</summary><dl class="aed-facts"><dt>Bateria</dt><dd>{{d.data_waznosci_baterii||'Brak daty'}}</dd><dt>Elektrody</dt><dd>{{d.data_waznosci_elektrod||'Brak daty'}}</dd><dt>Przegląd</dt><dd>{{d.data_przegladu||'Brak daty'}}</dd><dt>Współrzędne (WGS84)</dt><dd>{{d.szerokosc_geograficzna}}, {{d.dlugosc_geograficzna}}</dd><dt>Kod TERYT gminy</dt><dd>{{d.teryt_gminy||'Brak'}}</dd></dl></details></section><aed-map [devices]="[d]" [selected]="d.id_aed"/></div>
- <p class="aed-note">Dane demonstracyjne. Data aktualizacji rekordu nie jest datą sprawdzenia urządzenia w terenie.</p></ng-container>
+ <p class="aed-note">Data aktualizacji rekordu nie jest datą sprawdzenia urządzenia w terenie.</p></ng-container>
 `})
 export class AedDetailComponent implements OnInit{
   repo=inject(AED_REPOSITORY);route=inject(ActivatedRoute);device?:AedRow;loading=true;error='';access=DOSTEPNOSC_LABELS;states=STAN_LABELS;sources=ZRODLO_LABELS;expired=hasExpiredParts;address=formatAddress;hours=formatHours;

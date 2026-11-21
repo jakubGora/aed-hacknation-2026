@@ -19,7 +19,6 @@ import { download } from './aed-panel.component';
    <p>Jeden wspólny zbiór w dane.gov.pl, uzupełniany przez wielu dysponentów AED. Każdy rekord wskazuje dysponenta (REGON) odpowiedzialnego za dane. {{devices.length}} rekordów · {{dysponentCount}} dysponentów · licencja {{dataset.license}} · aktualizacja codzienna.</p>
    <div class="aed-actions"><button class="aed-button secondary" (click)="downloadCsv()" [disabled]="!devices.length">Pobierz CSV</button><button class="aed-button secondary" (click)="downloadJson()" [disabled]="!devices.length">Pobierz JSON</button><button class="aed-button secondary" (click)="downloadXml()">Metadane XML (import dane.gov.pl)</button></div>
  </section>
- <p class="aed-muted aed-public-note">Godziny i stan pochodzą z deklaracji dysponentów. Nie są informacją o dostępności w czasie rzeczywistym. Prototyp prezentuje wyłącznie fikcyjne dane.</p>
 `})
 export class AedPublicComponent implements OnInit {
   repo=inject(AED_REPOSITORY);devices:AedRow[]=[];query='';accessFilter='';hideUnavailable=false;selected='';loading=true;locating=false;locationMessage='';error='';origin={lat:53.1235,lon:18.0084};userHere:{lat:number;lon:number}|null=null;originLabel='Od centrum Bydgoszczy (punkt początkowy)';access=DOSTEPNOSC_LABELS;expired=hasExpiredParts;address=formatAddress;dataset=AED_DATASET;
