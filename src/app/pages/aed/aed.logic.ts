@@ -46,6 +46,13 @@ export function toOpeningHours(text: string): string {
 /** Demo subset; production should resolve the code from TERYT / PRG by address or coordinates. */
 const TERYT_GMINY: Record<string, string> = { bydgoszcz: '0461011', torun: '0463011', warszawa: '1465011', krakow: '1261011', lodz: '1061011', wroclaw: '0264011', poznan: '3064011', gdansk: '2261011' };
 export function suggestTeryt(miejscowosc: string): string { return TERYT_GMINY[fold(miejscowosc)] ?? ''; }
+/** A code from the known list stays only while the typed name is still that place. Any other code was entered by hand. */
+export function terytFollowsPlace(code: string, miejscowosc: string): boolean {
+  const typed = fold(miejscowosc);
+  if (!code || !typed) return false;
+  const owner = Object.keys(TERYT_GMINY).find(name => TERYT_GMINY[name] === code);
+  return !owner || owner.startsWith(typed);
+}
 
 export function splitAddress(address: string): { ulica: string; numer_budynku: string } {
   const m = address.trim().match(/^(.*?)[\s,]+(\d+[A-Za-z]?(?:\/\d+[A-Za-z]?)?)$/);

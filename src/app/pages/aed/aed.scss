@@ -12,13 +12,18 @@
 @media(max-width:991px){.aed-hero{gap:15px}.aed-hero h1{font-size:2.6rem}.aed-filterbar{flex-wrap:wrap}.aed-explorer{grid-template-columns:1fr 1fr}.aed-review-layout{grid-template-columns:250px 1fr}.aed-review-detail .aed-form-grid{grid-template-columns:1fr}.aed-page-heading{align-items:start;flex-direction:column;gap:8px}.aed-module-bar{align-items:start}.aed-module-bar nav{gap:16px}.aed-demo-banner{align-items:start}.aed-demo-banner>div{gap:8px}}
 @media(max-width:700px){.aed-module{padding-bottom:32px}.aed-module>.container{padding:0 18px}.aed-module h1{font-size:2rem}.aed-module-bar{flex-direction:column;gap:12px;margin-bottom:24px}.aed-module-bar nav{width:100%;gap:20px}.aed-module-bar nav a{font-size:.85rem}.aed-hero{grid-template-columns:1fr;padding-top:0;gap:12px}.aed-hero h1{font-size:2.4rem}.aed-hero img{max-width:300px;justify-self:center}.aed-how,.aed-join-grid,.aed-detail-layout,.aed-explorer,.aed-review-layout{grid-template-columns:1fr}.aed-how{gap:18px}.aed-campaign-cta{flex-direction:column;align-items:start;padding:24px}.aed-summary>div{padding:14px 12px}.aed-summary span{font-size:.75rem}.aed-summary strong{font-size:1.5rem}.aed-filterbar>*{width:100%;flex-basis:100%}.aed-result-heading{flex-direction:column;gap:4px}.aed-explorer aed-map{grid-row:1}.aed-map{height:330px;min-height:280px}.aed-results{max-height:none}.aed-form-grid{grid-template-columns:1fr}.aed-table{min-width:700px}.aed-steps{gap:15px}.aed-steps li{font-size:.8rem}.aed-review-detail{padding:16px}.aed-import-footer{flex-direction:column;align-items:start}.aed-demo-banner{flex-direction:column;gap:4px}.aed-join-option{padding:22px}.aed-upload{padding:30px 16px}.aed-facts{grid-template-columns:1fr;gap:4px}.aed-facts dd{margin-bottom:12px}}
 html[class*="black-"] .aed-module,html[class*="yellow-"] .aed-module,body[class*="black-"] .aed-module,body[class*="yellow-"] .aed-module{filter:contrast(1.25)}
-.aed-locator{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);gap:20px;margin-top:8px;align-items:start}
-.aed-locator-row{display:flex;gap:8px;align-items:center}.aed-locator-row input{flex:1}
+.aed-locate{margin-top:4px}.aed-locate>.aed-button{align-self:flex-start}.aed-locate .aed-form-grid{margin-top:4px}
 .aed-picker-map{height:300px;border:1px solid var(--aed-border);border-radius:4px}
-.aed-address-hits{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px}
-.aed-address-hits button{width:100%;text-align:left;background:#f4f5fb;border:1px solid #c8cadc;border-radius:4px;padding:10px 12px;cursor:pointer;color:var(--aed-navy);font:inherit}
+.aed-combobox{position:relative;flex:1;min-width:0}
+.aed-field:has(.aed-address-hits){position:relative;z-index:30}
+.aed-address-hits{position:absolute;z-index:30;top:100%;left:0;right:0;margin:1px 0 0;padding:0;list-style:none;background:#fff;border:1px solid #d2d2d2;box-shadow:0 3px 6px rgba(0,0,0,.25);max-height:16rem;overflow-y:auto}
+.aed-address-hits button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #e4e4e4;border-radius:0;padding:.5rem .75rem;line-height:1.2;cursor:pointer;color:#000;font:inherit;font-weight:400;min-height:0}
+.aed-address-hits li:last-child button{border-bottom:0}
+.aed-address-hits button:hover,.aed-address-hits button:focus{background:#def}
+.aed-address-hits button:focus-visible{outline-offset:-3px}
+.aed-hit-meta{flex:0 0 auto;color:#3d3d3d;font-size:.85rem}
 .aed-registry{margin:8px 0}.aed-registry.ok{color:var(--aed-green)}.aed-registry.warn{color:#8a5a00}
 .aed-pin.leaflet-marker-icon{background:url('/assets/aed/mapa-aed-signet.svg') center/contain no-repeat;border:0}
 .aed-pin.is-active.leaflet-marker-icon{filter:drop-shadow(0 0 1px #53BAA8) drop-shadow(0 0 3px #53BAA8)}
 .aed-pin.is-down.leaflet-marker-icon{filter:grayscale(1) opacity(.45)}
-@media(max-width:700px){.aed-locator{grid-template-columns:1fr}.aed-locator-row{flex-direction:column;align-items:stretch}.aed-picker-map{height:240px}}
+@media(max-width:700px){.aed-picker-map{height:240px}}
