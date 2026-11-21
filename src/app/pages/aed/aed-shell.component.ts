@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AED_CONFIG, MockAedRepository } from './aed.repository';
 @Component({standalone:true,imports:[CommonModule,RouterLink,RouterLinkActive,RouterOutlet],template:`
- <div class="aed-module"><div class="container"><div class="aed-module-bar"><a routerLink="/pl/aed" class="aed-wordmark"><img src="/assets/aed/mapa-aed.svg" alt="Mapa AED" height="48"/></a><nav aria-label="Mapa AED"><a routerLink="/pl/aed" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">O akcji</a><a routerLink="/pl/aed/mapa" routerLinkActive="active">Znajdź AED</a><a routerLink="/pl/aed/dolacz" routerLinkActive="active">Dla organizacji</a><a routerLink="/pl/aed/panel" routerLinkActive="active">Moje urządzenia</a></nav></div><router-outlet/></div></div>
+ <div class="aed-module"><div class="container"><div class="aed-module-bar"><a routerLink="/pl/aed" class="aed-wordmark"><img src="/assets/aed/mapa-aed-logo.png" alt="Mapa AED" width="270" height="95"/></a><nav aria-label="Mapa AED"><a routerLink="/pl/aed" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">O akcji</a><a routerLink="/pl/aed/mapa" routerLinkActive="active">Znajdź AED</a><a routerLink="/pl/aed/dolacz" routerLinkActive="active">Dla organizacji</a><a routerLink="/pl/aed/panel" routerLinkActive="active">Moje urządzenia</a></nav></div><router-outlet/></div></div>
 `})
 export class AedShellComponent {}
 @Component({standalone:true,imports:[CommonModule,RouterLink],template:`
