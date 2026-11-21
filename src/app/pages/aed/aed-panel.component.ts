@@ -1,0 +1,25 @@
+import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AedDevice, DOSTEPNOSC_LABELS, Dysponent } from './aed.models';
+import { AED_REPOSITORY } from './aed.repository';
+import { needsReview, exportCsv, formatAddress, hasExpiredParts } from './aed.logic';
+export function download(text:string, filename:string, type='text/csv;charset=utf-8'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+@Component({standalone:true,imports:[CommonModule,FormsModule,RouterLink],template:`
+  <div class="aed-page-heading"><div><p class="aed-eyebrow">PANEL DYSPONENTA AED</p><h1>Moje urządzenia AED</h1><p>Twoje rekordy we wspólnym zbiorze „Defibrylatory AED w Polsce”.</p><p class="aed-muted" *ngIf="dysponent">Dysponent: <strong>{{dysponent.nazwa}}</strong> · REGON {{dysponent.regon}}</p></div><div class="aed-actions"><a class="aed-button secondary" routerLink="/pl/aed/import">Importuj CSV</a><a class="aed-button" routerLink="/pl/aed/panel/nowe">Dodaj urządzenie</a></div></div>
+  <div class="aed-alert success" role="status" *ngIf="saved">{{saved==='draft'?'Szkic zapisany. Nie jest widoczny w publicznym zbiorze.':'Dane zapisane. Rekord jest widoczny we wspólnym zbiorze.'}}</div>
+  <div class="aed-alert error" role="alert" *ngIf="error">{{error}}</div>
+  <div class="aed-summary"><div><strong>{{devices.length}}</strong><span>urządzeń dysponenta</span></div><div><strong>{{reviewCount}}</strong><span>wymaga uzupełnienia / przeglądu</span></div><div><strong>{{draftCount}}</strong><span>szkiców poza zbiorem</span></div></div>
+  <div class="aed-filterbar"><div class="aed-field grow"><label for="panel-search">Szukaj urządzenia</label><input id="panel-search" [(ngModel)]="query" placeholder="Nazwa, adres, miejscowość lub ID" type="search"/></div><div class="aed-field"><label for="panel-status">Pokaż</label><select id="panel-status" [(ngModel)]="filter"><option value="all">Wszystkie urządzenia</option><option value="review">Wymagające sprawdzenia</option><option value="draft">Szkice</option></select></div><button class="aed-button secondary" (click)="export()" [disabled]="!devices.length">Eksportuj moje CSV</button></div>
+  <p role="status" *ngIf="loading">Wczytywanie urządzeń…</p>
+  <div class="aed-table-wrap" *ngIf="!loading"><table class="aed-table"><caption class="visually-hidden">Urządzenia AED Twojego dysponenta</caption><thead><tr><th scope="col">Urządzenie i lokalizacja</th><th scope="col">Dostęp</th><th scope="col">Bateria / elektrody</th><th scope="col">Status</th><th scope="col">Działanie</th></tr></thead><tbody><tr *ngFor="let d of filtered"><td><strong>{{d.nazwa_miejsca}}</strong><span class="aed-cell-sub">{{address(d)}}, {{d.miejscowosc}}</span><span class="aed-cell-sub">{{d.id_aed}}</span></td><td>{{access[d.dostepnosc]}}</td><td><span [class.aed-warning-text]="expired(d)">{{d.data_waznosci_baterii||'Brak daty'}}<br/>{{d.data_waznosci_elektrod||'Brak daty'}}</span></td><td><span class="aed-badge" [class.warning]="d.status==='draft'||review(d)">{{d.status==='draft'?'Szkic':review(d)?'Do sprawdzenia':'Opublikowane'}}</span><span class="aed-cell-sub">Weryfikacja: {{d.data_weryfikacji||'brak'}}</span></td><td><a [routerLink]="['/pl/aed/panel',d.id_aed,'edytuj']" [attr.aria-label]="'Edytuj '+d.nazwa_miejsca">Edytuj</a></td></tr><tr *ngIf="!filtered.length"><td colspan="5">Nie znaleziono urządzeń. Zmień filtry lub dodaj pierwsze AED.</td></tr></tbody></table></div>
+  <div class="aed-note"><strong>Jeden wspólny zbiór, wielu dysponentów.</strong><p>Edytujesz tylko rekordy swojego dysponenta. Po wymianie baterii lub elektrod zaktualizuj terminy. Potwierdzenie danych nie jest automatycznym potwierdzeniem sprawności urządzenia.</p></div>
+`})
+export class AedPanelComponent implements OnInit{
+  repo=inject(AED_REPOSITORY);route=inject(ActivatedRoute);devices:AedDevice[]=[];dysponent:Dysponent|null=null;loading=true;error='';query='';filter='all';access=DOSTEPNOSC_LABELS;review=needsReview;expired=hasExpiredParts;address=formatAddress;saved=this.route.snapshot.queryParamMap.get('saved');
+  ngOnInit(){this.repo.context().subscribe(c=>this.dysponent=c.dysponent);this.repo.listMine().subscribe({next:r=>{this.devices=r;this.loading=false;},error:e=>{this.error=e.message;this.loading=false;}});}
+  get reviewCount(){return this.devices.filter(needsReview).length;}get draftCount(){return this.devices.filter(d=>d.status==='draft').length;}
+  get filtered(){const q=this.query.toLowerCase();return this.devices.filter(d=>(`${d.nazwa_miejsca} ${formatAddress(d)} ${d.miejscowosc} ${d.id_aed}`).toLowerCase().includes(q)&&(this.filter==='all'||this.filter==='review'&&needsReview(d)||this.filter==='draft'&&d.status==='draft'));}
+  export(){download(exportCsv(this.devices),`aed-${this.dysponent?.regon||'dysponent'}.csv`);}
+}

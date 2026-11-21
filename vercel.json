@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build:aed-public",
+  "outputDirectory": "dist/aed/browser",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

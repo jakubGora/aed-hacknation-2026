@@ -1,0 +1,18 @@
+import { firstValueFrom } from 'rxjs';
+import { EMPTY_DEVICE, AedDevice } from './aed.models';
+import { DEMO_DYSPONENT, MockAedRepository, OTHER_DYSPONENT } from './aed.repository';
+
+describe('AED mock repository contract',()=>{
+  let repo:MockAedRepository;
+  const device=():AedDevice=>({...EMPTY_DEVICE,id_zrodlowe:'TEST-NEW',nazwa_miejsca:'Test AED',teryt_gminy:'0461011',miejscowosc:'Bydgoszcz',ulica:'ul. Długa',numer_budynku:'12',kod_pocztowy:'85-034',szerokosc_geograficzna:53.12,dlugosc_geograficzna:18.01,opis_lokalizacji:'Recepcja',dostepnosc:'calodobowa',stan_urzadzenia:'sprawne',data_weryfikacji:'2026-11-18',status:'published',history:[]});
+  beforeEach(()=>{localStorage.clear();sessionStorage.clear();sessionStorage.setItem('aed-demo-editor','yes');repo=new MockAedRepository();});
+  it('denies writes without a dysponent session',async()=>{sessionStorage.clear();await expect(firstValueFrom(repo.save(device()))).rejects.toThrow('Wymagany dostęp');});
+  it('assigns a stable id_aed and dysponent attribution on save',async()=>{const saved=await firstValueFrom(repo.save(device()));expect(saved.id_aed).toMatch(new RegExp(`^AED-${DEMO_DYSPONENT.regon}-\\d{4}$`));expect(saved.regon_dysponenta).toBe(DEMO_DYSPONENT.regon);expect(saved.nazwa_dysponenta).toBe(DEMO_DYSPONENT.nazwa);expect(saved.data_aktualizacji).toBeTruthy();});
+  it('persists saves across repository instances and keeps drafts out of the public dataset',async()=>{const saved=await firstValueFrom(repo.save({...device(),status:'draft'}));expect((await firstValueFrom(new MockAedRepository().listMine())).some(d=>d.id_aed===saved.id_aed)).toBe(true);expect((await firstValueFrom(repo.listPublic())).some(d=>d.id_aed===saved.id_aed)).toBe(false);});
+  it('public dataset contains several dysponents and no internal fields',async()=>{const rows=await firstValueFrom(repo.listPublic());expect(new Set(rows.map(r=>r.regon_dysponenta))).toEqual(new Set([DEMO_DYSPONENT.regon,OTHER_DYSPONENT.regon]));expect(rows[0]).not.toHaveProperty('history');expect(rows[0]).not.toHaveProperty('status');});
+  it('rejects editing a device of another dysponent',async()=>{sessionStorage.removeItem('aed-demo-editor');const other=(await firstValueFrom(repo.listPublic())).find(d=>d.regon_dysponenta===OTHER_DYSPONENT.regon)!;sessionStorage.setItem('aed-demo-editor','yes');await expect(firstValueFrom(repo.save({...other,status:'published',revision:1,history:[],nazwa_miejsca:'Changed'}))).rejects.toThrow('swojego dysponenta');});
+  it('increments revision and rejects a stale update',async()=>{const saved=await firstValueFrom(repo.save(device()));const changed=await firstValueFrom(repo.save({...saved,nazwa_miejsca:'Updated'}));expect(changed.revision).toBe(2);expect(changed.history).toHaveLength(2);await expect(firstValueFrom(repo.save({...saved,nazwa_miejsca:'Stale'}))).rejects.toThrow('został zmieniony');});
+  it('re-importing the same dataset is idempotent',async()=>{expect(await firstValueFrom(repo.import([device(),device()]))).toEqual({added:1,skipped:1});expect(await firstValueFrom(repo.import([device()]))).toEqual({added:0,skipped:1});});
+  it('does not commit a partial batch if a later row is invalid',async()=>{const count=(await firstValueFrom(repo.listMine())).length;await expect(firstValueFrom(repo.import([device(),{...device(),id_zrodlowe:'BAD',kod_pocztowy:'invalid'}]))).rejects.toThrow('niepoprawne');expect((await firstValueFrom(repo.listMine())).length).toBe(count);});
+  it('prevents publishing a record with missing location',async()=>{await expect(firstValueFrom(repo.save({...device(),szerokosc_geograficzna:null}))).rejects.toThrow('wymagane dane');});
+});
