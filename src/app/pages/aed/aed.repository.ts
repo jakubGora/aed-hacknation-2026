@@ -2,7 +2,7 @@ import { inject, Injectable, InjectionToken } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, defer, of } from 'rxjs';
 import { AedContext, AedDevice, AedRow, Dysponent, EMPTY_DEVICE } from './aed.models';
-import { publicRow, sameDevice, validateDevice } from './aed.logic';
+import { publicRow, sameDevice, serialKey, validateDevice } from './aed.logic';
 
 export const AED_CONFIG = new InjectionToken<{demo:boolean; apiUrl:string}>('AED_CONFIG',{providedIn:'root',factory:()=>({demo:false,apiUrl:'/api/aed/v1'})});
 export type ImportResult = { added: number; skipped: number };
@@ -34,7 +34,7 @@ export class HttpAedRepository extends AedRepository {
 
 export const DEMO_DYSPONENT: Dysponent = { regon: '123456785', nazwa: 'Miejskie Centrum Aktywności — demo', portal_institution_id: null };
 export const OTHER_DYSPONENT: Dysponent = { regon: '987654326', nazwa: 'Fundacja Sąsiedzi — demo', portal_institution_id: null };
-export const DEMO_STORAGE_KEY = 'aed-hacknation-v2';
+export const DEMO_STORAGE_KEY = 'aed-hacknation-v3';
 
 function initialDevices(): AedDevice[] {
   const at = '2026-11-18T10:00:00Z';
@@ -50,7 +50,7 @@ function initialDevices(): AedDevice[] {
     const number = i === 4 ? 1 : i + 1;
     return {
       ...EMPTY_DEVICE,
-      id_aed: `AED-${owner.regon}-${String(number).padStart(4, '0')}`, id_zrodlowe: `DEMO-${i + 1}`,
+      id_aed: `AED-${owner.regon}-${String(number).padStart(4, '0')}`, numer_seryjny: ['PHILIPS-HS1-44021', 'PHILIPS-HS1-44022', 'CARDIAC-G5-11880', 'ZOLL-AED3-22010', 'MINDRAY-C1-90031'][i], id_zrodlowe: `DEMO-${i + 1}`,
       regon_dysponenta: owner.regon, nazwa_dysponenta: owner.nazwa,
       teryt_gminy: '0461011', miejscowosc: 'Bydgoszcz', opis_lokalizacji: 'Parter, przy recepcji. Wejście od strony ulicy.',
       stan_urzadzenia: 'sprawne', data_weryfikacji: '2026-11-18', zrodlo_danych: 'formularz', data_aktualizacji: at,
@@ -84,10 +84,12 @@ export class MockAedRepository extends AedRepository {
       if (existing && existing.regon_dysponenta !== DEMO_DYSPONENT.regon) throw new Error('Możesz edytować tylko urządzenia swojego dysponenta.');
       if (existing && existing.revision !== input.revision) throw new Error('Rekord został zmieniony. Odśwież dane przed zapisem.');
       if (input.status === 'published' && validateDevice(input).some(i => i.severity === 'error')) throw new Error('Uzupełnij wymagane dane przed publikacją.');
+      const serial = serialKey(input.numer_seryjny || '');
+      if (serial && data.some(d => d.id_aed !== existing?.id_aed && serialKey(d.numer_seryjny || '') === serial)) throw new Error('Urządzenie o tym numerze seryjnym jest już w zbiorze.');
       const at = new Date().toISOString();
       const action = !existing ? 'Dodano urządzenie' : existing.status !== input.status ? (input.status === 'published' ? 'Opublikowano w zbiorze' : 'Wycofano do szkicu') : 'Zaktualizowano dane urządzenia';
       const d: AedDevice = {
-        ...input,
+        ...input, numer_seryjny: (input.numer_seryjny || '').trim(),
         id_aed: existing?.id_aed || nextId(data, DEMO_DYSPONENT.regon),
         regon_dysponenta: DEMO_DYSPONENT.regon, nazwa_dysponenta: DEMO_DYSPONENT.nazwa,
         data_aktualizacji: at, revision: (existing?.revision || 0) + 1,
@@ -104,10 +106,10 @@ export class MockAedRepository extends AedRepository {
       if (devices.some(d => validateDevice(d).some(i => i.severity === 'error'))) throw new Error('Import zawiera niepoprawne rekordy.');
       let added = 0, skipped = 0;
       for (const input of devices) {
-        if (data.some(d => d.regon_dysponenta === DEMO_DYSPONENT.regon && sameDevice(d, input))) { skipped++; continue; }
+        if (data.some(d => sameDevice(d, input))) { skipped++; continue; }
         const at = new Date().toISOString();
         data.push({
-          ...input, id_aed: nextId(data, DEMO_DYSPONENT.regon),
+          ...input, numer_seryjny: (input.numer_seryjny || '').trim(), id_aed: nextId(data, DEMO_DYSPONENT.regon),
           regon_dysponenta: DEMO_DYSPONENT.regon, nazwa_dysponenta: DEMO_DYSPONENT.nazwa,
           zrodlo_danych: 'import_csv', data_aktualizacji: at, status: 'published', revision: 1,
           history: [{ at, action: 'Dodano z importu CSV' }],
@@ -118,6 +120,6 @@ export class MockAedRepository extends AedRepository {
       return of({ added, skipped });
     });
   }
-  reset() { localStorage.removeItem(DEMO_STORAGE_KEY); localStorage.removeItem('aed-hacknation-v1'); }
+  reset() { localStorage.removeItem(DEMO_STORAGE_KEY); localStorage.removeItem('aed-hacknation-v2'); localStorage.removeItem('aed-hacknation-v1'); }
 }
 export const AED_REPOSITORY = new InjectionToken<AedRepository>('AED_REPOSITORY',{providedIn:'root',factory:()=>inject(AED_CONFIG).demo?inject(MockAedRepository):inject(HttpAedRepository)});

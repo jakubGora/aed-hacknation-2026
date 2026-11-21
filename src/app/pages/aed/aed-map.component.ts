@@ -17,7 +17,8 @@ export class AedMapComponent implements AfterViewInit,OnChanges,OnDestroy {
     const point=(d:Located):[number,number]=>[d.szerokosc_geograficzna,d.dlugosc_geograficzna];
     for(const d of valid){
       const active=this.selected===d.id_aed;
-      const marker=this.leaflet.circleMarker(point(d),{radius:active?14:10,color:'#ffffff',weight:3,fillColor:d.stan_urzadzenia==='niesprawne'?'#687787':active?'#0f2648':'#0865c9',fillOpacity:1}).addTo(this.layer);
+      const down=d.stan_urzadzenia==='niesprawne';
+      const marker=this.leaflet.marker(point(d),{icon:this.leaflet.divIcon({className:`aed-pin${active?' is-active':''}${down?' is-down':''}`,iconSize:[32,28],iconAnchor:[16,26],html:''}),keyboard:true,alt:d.nazwa_miejsca}).addTo(this.layer);
       const label=document.createElement('span');label.textContent=d.nazwa_miejsca;marker.bindTooltip(label);
       marker.on('click',()=>this.zone.run(()=>this.selectDevice.emit(d.id_aed)));
     }

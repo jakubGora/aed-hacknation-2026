@@ -1,17 +1,7 @@
-import { AsyncPipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
-import {
-  AfterViewInit,
-  Component,
-  Inject,
-  OnDestroy,
-  OnInit,
-  PLATFORM_ID,
-  TemplateRef,
-  ViewChild,
-} from '@angular/core';
+import { AsyncPipe, DOCUMENT } from '@angular/common';
+import { Component, Inject, OnInit } from '@angular/core';
 import { environment } from '@env/environment';
-import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { BehaviorSubject, Subscription } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { FooterLogosFilterService } from '@app/layout/footer/footer-logos-filter.service';
@@ -24,37 +14,18 @@ import { RouterEndpoints } from '@app/services/models/routerEndpoints';
 import { CmsBlock2Component } from '@app/shared/cms/cms-block2/cms-block2.component';
 import { CmsLandingPageComponent } from '@app/shared/cms/cms-landing-page/cms-landing-page.component';
 import packageJson from '../../../../package.json';
-import { LocalStorageService } from 'ngx-localstorage';
-import { RodoModalComponent } from '@app/shared/rodo-modal/rodo-modal.component';
 
 @Component({
   selector: 'app-footer',
   templateUrl: './footer.component.html',
-  imports: [CmsLandingPageComponent, CmsBlock2Component, AsyncPipe, RodoModalComponent],
+  imports: [CmsLandingPageComponent, CmsBlock2Component, AsyncPipe],
   standalone: true,
 })
-export class FooterComponent implements OnInit, AfterViewInit, OnDestroy {
+export class FooterComponent implements OnInit {
   /**
    * Router endpoints
    */
   readonly routerEndpoints = RouterEndpoints;
-  isAcquintedWithRodo: boolean;
-
-  /**
-   * RODO modal reference
-   */
-  @ViewChild('rodoModalTemplate') rodoModalTemplate: TemplateRef<unknown>;
-  rodoModalRef: BsModalRef;
-
-  /**
-   * RODO modal hide subscription
-   */
-  rodoModalHideSubscription: Subscription;
-
-  /**
-   * App prefix in local storage
-   */
-  storagePrefix = 'OD';
 
   /**
    * Current version of app
@@ -80,11 +51,8 @@ export class FooterComponent implements OnInit, AfterViewInit, OnDestroy {
    * @ignore
    */
   constructor(
-    private modalService: BsModalService,
-    private localStorage: LocalStorageService,
     public cmsService: CmsService,
     @Inject(DOCUMENT) private document: Document,
-    @Inject(PLATFORM_ID) private platformId: string,
     private footerLogosFilterService: FooterLogosFilterService,
   ) {}
 
@@ -94,39 +62,6 @@ export class FooterComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.getRDFDocumentationURL();
     this.assignCmsSection();
-  }
-
-  ngAfterViewInit() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.isAcquintedWithRodo = !!this.localStorage.get('isAcquintedWithRodo', { prefix: this.storagePrefix });
-
-      if (this.isAcquintedWithRodo) {
-        return;
-      }
-
-      setTimeout(() => {
-        this.rodoModalOpen();
-      });
-
-      this.rodoModalHideSubscription = this.modalService.onHidden.subscribe(() => {
-        this.localStorage.set('isAcquintedWithRodo', 'true', { prefix: this.storagePrefix });
-        this.rodoModalRef = null;
-      });
-    }
-  }
-
-  ngOnDestroy() {
-    if (isPlatformBrowser(this.platformId && this.rodoModalHideSubscription)) {
-      this.rodoModalHideSubscription.unsubscribe();
-    }
-  }
-
-  private rodoModalOpen() {
-    this.rodoModalRef = this.modalService.show(this.rodoModalTemplate, { class: 'modal-lg' });
-  }
-
-  rodoModalClose() {
-    this.rodoModalRef.hide();
   }
 
   /**

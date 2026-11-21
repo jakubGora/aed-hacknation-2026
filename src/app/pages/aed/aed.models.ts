@@ -7,6 +7,7 @@ export type StatusRekordu = 'published' | 'draft';
 /** One row of the shared dataset "Defibrylatory AED w Polsce" = one column set of the CSV resource in dane.gov.pl. */
 export interface AedRow {
   id_aed: string;
+  numer_seryjny: string;
   id_zrodlowe: string;
   regon_dysponenta: string;
   nazwa_dysponenta: string;
@@ -57,7 +58,8 @@ export interface ColumnSpec {
 /** Reference data scope: drives the CSV/JSON export, CSV import mapping and labels. */
 export const AED_COLUMNS: ColumnSpec[] = [
   { name: 'id_aed', label: 'Identyfikator AED', type: 'string', required: 'tak', filledBy: 'system', description: 'Stały identyfikator urządzenia we wspólnym zbiorze.', example: 'AED-123456785-0001' },
-  { name: 'id_zrodlowe', label: 'Identyfikator u dysponenta', type: 'string', required: 'nie', filledBy: 'dysponent', description: 'Identyfikator z ewidencji dysponenta. Chroni przed duplikatami przy ponownym imporcie.', example: 'INW-2023-014' },
+  { name: 'numer_seryjny', label: 'Numer seryjny', type: 'string', required: 'tak', filledBy: 'dysponent', description: 'Numer seryjny z obudowy urządzenia. Jednoznacznie identyfikuje fizyczne AED. Ten sam numer nie może wystąpić drugi raz w zbiorze.', example: 'PHILIPS-HS1-44021' },
+  { name: 'id_zrodlowe', label: 'Identyfikator u dysponenta', type: 'string', required: 'nie', filledBy: 'dysponent', description: 'Identyfikator z ewidencji dysponenta. Nie zastępuje numeru seryjnego.', example: 'INW-2023-014' },
   { name: 'regon_dysponenta', label: 'REGON dysponenta', type: 'string', required: 'tak', filledBy: 'system', description: 'REGON organizacji odpowiedzialnej za dane (9 lub 14 cyfr).', example: '123456785' },
   { name: 'nazwa_dysponenta', label: 'Nazwa dysponenta', type: 'string', required: 'tak', filledBy: 'system', description: 'Nazwa organizacji odpowiedzialnej za dane.', example: 'Miejskie Centrum Aktywności' },
   { name: 'nazwa_miejsca', label: 'Nazwa miejsca', type: 'string', required: 'tak', filledBy: 'dysponent', description: 'Nazwa obiektu, w którym znajduje się AED.', example: 'Biblioteka Miejska — filia nr 3' },
@@ -89,7 +91,7 @@ export const STAN_LABELS: Record<StanUrzadzenia, string> = { sprawne: 'Zgłoszon
 export const ZRODLO_LABELS: Record<ZrodloDanych, string> = { formularz: 'Formularz dysponenta', import_csv: 'Import CSV dysponenta', zbior_dostawcy: 'Zbiór dostawcy w dane.gov.pl' };
 
 export const EMPTY_DEVICE: AedDevice = {
-  id_aed: '', id_zrodlowe: '', regon_dysponenta: '', nazwa_dysponenta: '', nazwa_miejsca: '', teryt_gminy: '',
+  id_aed: '', numer_seryjny: '', id_zrodlowe: '', regon_dysponenta: '', nazwa_dysponenta: '', nazwa_miejsca: '', teryt_gminy: '',
   miejscowosc: '', ulica: '', numer_budynku: '', kod_pocztowy: '', szerokosc_geograficzna: null, dlugosc_geograficzna: null,
   opis_lokalizacji: '', dostepnosc: 'nieznana', godziny_dostepnosci: '', uwagi_dostepu: '', stan_urzadzenia: 'nieznany',
   data_waznosci_baterii: '', data_waznosci_elektrod: '', data_przegladu: '', data_weryfikacji: '',

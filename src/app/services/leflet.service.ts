@@ -4,6 +4,8 @@ import {
   Circle,
   CircleMarker,
   CircleMarkerOptions,
+  DivIcon,
+  DivIconOptions,
   GeoJSON,
   GeoJSONOptions,
   Icon,
@@ -95,6 +97,13 @@ export class LeafletService {
    */
   circleMarker(latlng: LatLngExpression, options?: CircleMarkerOptions): CircleMarker {
     return this.L.circleMarker(latlng, options);
+  }
+
+  /**
+   * Creates a leaflet div icon, used for the Mapa AED signet marker.
+   */
+  divIcon(options: DivIconOptions): DivIcon {
+    return this.L.divIcon(options);
   }
 
   /**

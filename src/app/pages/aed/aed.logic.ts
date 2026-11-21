@@ -58,6 +58,9 @@ export function validateDevice(d: AedRow, now = today()): Issue[] {
   const warn = (field: string, message: string) => issues.push({ field, message, severity: 'warning' });
   const required: [AedColumn, string][] = [['nazwa_miejsca','Podaj nazwę miejsca.'],['miejscowosc','Podaj miejscowość.'],['numer_budynku','Podaj numer budynku.'],['opis_lokalizacji','Opisz dokładnie, gdzie znajduje się AED.']];
   for (const [key, message] of required) if (!String(d[key] ?? '').trim()) error(key, message);
+  const serial = (d.numer_seryjny || '').trim();
+  if (!serial) error('numer_seryjny', 'Podaj numer seryjny z obudowy urządzenia.');
+  else if (serial.length < 3 || serial.length > 64 || !/^[A-Za-z0-9][A-Za-z0-9 ./-]*$/.test(serial)) error('numer_seryjny', 'Numer seryjny może mieć od 3 do 64 znaków: litery, cyfry, myślnik, kropkę i ukośnik.');
   if (!/^\d{2}-\d{3}$/.test(d.kod_pocztowy)) error('kod_pocztowy', 'Kod pocztowy musi mieć format 00-000.');
   if (!d.teryt_gminy) warn('teryt_gminy', 'Brak kodu TERYT gminy. Uzupełnij go albo wybierz znaną miejscowość.');
   else if (!/^\d{7}$/.test(d.teryt_gminy)) error('teryt_gminy', 'Kod TERYT gminy ma 7 cyfr, np. 0461011.');
@@ -121,6 +124,7 @@ export function parseCsv(input: string): {headers:string[]; rows:string[][]} {
 }
 
 const ALIASES: Partial<Record<AedColumn, string[]>> = {
+  numer_seryjny: ['numer seryjny', 'nr seryjny', 'serial', 'sn', 's/n', 'serial number'],
   id_zrodlowe: ['id', 'identyfikator', 'numer id', 'nr', 'lp', 'id w zrodle', 'nr inwentarzowy'],
   nazwa_miejsca: ['nazwa', 'nazwa miejsca', 'miejsce', 'obiekt', 'nazwa obiektu'],
   teryt_gminy: ['teryt', 'kod teryt', 'teryt gminy'],
@@ -156,7 +160,7 @@ export function mappedDevice(headers: string[], row: string[], mapping: Record<s
     if (f === 'dostepnosc') { d.dostepnosc = ACCESS_VALUES[fold(v)] ?? 'nieznana'; continue; }
     if (f === 'stan_urzadzenia') { d.stan_urzadzenia = STATE_VALUES[fold(v)] ?? 'nieznany'; continue; }
     if (f.startsWith('data_')) { const m = v.match(/^(\d{2})[./](\d{2})[./](\d{4})$/); (d as any)[f] = m ? `${m[3]}-${m[2]}-${m[1]}` : v; continue; }
-    (d as any)[f] = v;
+    (d as any)[f] = f === 'numer_seryjny' ? v.replace(/\s+/g, ' ').trim() : v;
   }
   if (!d.numer_budynku && d.ulica) Object.assign(d, splitAddress(d.ulica));
   if (d.godziny_dostepnosci) d.godziny_dostepnosci = toOpeningHours(d.godziny_dostepnosci);
@@ -165,9 +169,14 @@ export function mappedDevice(headers: string[], row: string[], mapping: Record<s
   return d;
 }
 
+export function serialKey(value: string): string {
+  return value.trim().toLocaleUpperCase('pl').replace(/[\s-]+/g, '');
+}
+
+/** The same physical device: stable dataset id, or the same serial number anywhere in the dataset. */
 export function sameDevice(a: AedRow, b: AedRow): boolean {
-  const norm = (s: string) => s.trim().toLocaleLowerCase('pl').replace(/\s+/g, ' ');
   if (a.id_aed && a.id_aed === b.id_aed) return true;
-  if (a.id_zrodlowe && a.id_zrodlowe === b.id_zrodlowe) return true;
-  return norm(a.nazwa_miejsca) === norm(b.nazwa_miejsca) && norm(a.miejscowosc) === norm(b.miejscowosc) && norm(a.ulica) === norm(b.ulica) && norm(a.numer_budynku) === norm(b.numer_budynku);
+  const left = serialKey(a.numer_seryjny || '');
+  const right = serialKey(b.numer_seryjny || '');
+  return !!left && left === right;
 }

@@ -14,6 +14,7 @@ import { AedMapComponent } from './aed-map.component';
    <ng-container *ngIf="d.uwagi_dostepu"><dt>Warunki dostępu</dt><dd>{{d.uwagi_dostepu}}</dd></ng-container>
    <dt>Zgłoszony stan</dt><dd>{{states[d.stan_urzadzenia]}}</dd>
    <dt>Ostatnia weryfikacja</dt><dd>{{d.data_weryfikacji||'Brak informacji'}}</dd>
+   <dt>Numer seryjny</dt><dd>{{d.numer_seryjny}}</dd>
    <dt>Dysponent</dt><dd>{{d.nazwa_dysponenta}} · REGON {{d.regon_dysponenta}}</dd>
    <dt>Źródło danych</dt><dd>{{sources[d.zrodlo_danych]}}</dd>
    <dt>Aktualizacja rekordu</dt><dd>{{d.data_aktualizacji|date:'dd.MM.yyyy HH:mm'}}</dd>

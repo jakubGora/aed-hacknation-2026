@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeafletService } from '@app/services/leflet.service';
 import type { LayerGroup, LeafletMouseEvent, Map } from 'leaflet';
-import { addressesMatch, RegistryAddress, registryQuery, reverseRegistry, searchRegistry, terytFromRegistry } from './aed-address';
+import { addressesMatch, RegistryAddress, registryQuery, reverseRegistry, searchRegistry, suggestRegistry, terytFromRegistry } from './aed-address';
 import { AED_COLUMNS, AedColumn, AedDevice, DOSTEPNOSC_LABELS, FIELD_LABELS, STAN_LABELS } from './aed.models';
 import { distanceKm, formatHours, suggestTeryt, toOpeningHours, today, validateDevice, validOpeningHours } from './aed.logic';
 
@@ -25,12 +25,12 @@ type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
     </div>
     <div class="aed-locator">
       <div class="aed-locator-search">
-        <label [for]="prefix+'rejestr'">Szukaj adresu w rejestrze</label>
+        <label [for]="prefix+'rejestr'">Adres z rejestru</label>
         <div class="aed-locator-row">
-          <input [id]="prefix+'rejestr'" type="search" [(ngModel)]="query" (keydown.enter)="$event.preventDefault(); search()" placeholder="Np. Bydgoszcz, Długa 12" />
+          <input [id]="prefix+'rejestr'" type="search" [(ngModel)]="query" (ngModelChange)="onQuery()" (keydown.enter)="$event.preventDefault(); search()" placeholder="Np. Bydgoszcz, Długa 12" autocomplete="off" />
           <button type="button" class="aed-button secondary" (click)="search()" [disabled]="busy">Szukaj</button>
         </div>
-        <ul class="aed-address-hits" *ngIf="hits.length"><li *ngFor="let hit of hits"><button type="button" (click)="apply(hit)">{{hit.label}}</button></li></ul>
+        <ul class="aed-address-hits" *ngIf="hits.length"><li *ngFor="let hit of hits"><button type="button" (click)="choose(hit)">{{hit.label}}</button></li></ul>
         <p class="aed-registry" [class.ok]="statusKind==='ok'" [class.warn]="statusKind==='warn'" role="status" *ngIf="status">{{status}}</p>
         <div class="aed-actions">
           <button type="button" class="aed-button secondary" *ngIf="pointOffer" (click)="applyPoint(pointOffer)">Ustaw punkt z rejestru</button>
@@ -62,8 +62,9 @@ type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
   <fieldset class="aed-fieldset"><legend>Terminy i weryfikacja</legend><p class="aed-muted">Jeśli nie znasz daty, pozostaw pole puste. Upływ terminu nie usuwa urządzenia ze zbioru, ale oznacza je jako wymagające sprawdzenia.</p><div class="aed-form-grid">
     <div class="aed-field" *ngFor="let f of dates"><label [for]="prefix+f">{{labels[f]}} <span class="aed-required" *ngIf="required(f)">(wymagane do publikacji)</span></label><input type="date" [id]="prefix+f" [(ngModel)]="$any(device)[f]" (ngModelChange)="changed.emit()" [attr.max]="f==='data_weryfikacji'?now:null" [attr.aria-invalid]="hasError(f)"/><small [class.aed-error]="hasError(f)" [class.aed-warning-text]="!hasError(f)">{{message(f)}}</small></div>
   </div></fieldset>
-  <fieldset class="aed-fieldset"><legend>Identyfikator w Twojej ewidencji</legend><div class="aed-form-grid">
-    <div class="aed-field"><label [for]="prefix+'id_zrodlowe'">{{labels['id_zrodlowe']}}</label><input [id]="prefix+'id_zrodlowe'" [(ngModel)]="device.id_zrodlowe" (ngModelChange)="changed.emit()" maxlength="100"/><small>Opcjonalnie — pomaga uniknąć duplikatów przy kolejnych importach.</small></div>
+  <fieldset class="aed-fieldset"><legend>Identyfikacja urządzenia</legend><div class="aed-form-grid">
+    <div class="aed-field"><label [for]="prefix+'numer_seryjny'">{{labels['numer_seryjny']}} <span class="aed-required">(wymagane do publikacji)</span></label><input [id]="prefix+'numer_seryjny'" [(ngModel)]="device.numer_seryjny" (ngModelChange)="changed.emit()" maxlength="64" [attr.aria-invalid]="hasError('numer_seryjny')"/><small>Numer z obudowy. Ten sam numer nie może wystąpić drugi raz w zbiorze.</small><small class="aed-error">{{error('numer_seryjny')}}</small></div>
+    <div class="aed-field"><label [for]="prefix+'id_zrodlowe'">{{labels['id_zrodlowe']}}</label><input [id]="prefix+'id_zrodlowe'" [(ngModel)]="device.id_zrodlowe" (ngModelChange)="changed.emit()" maxlength="100"/><small>Opcjonalny numer z Twojej ewidencji. Nie zastępuje numeru seryjnego.</small></div>
     <div class="aed-field" *ngIf="device.id_aed"><label [for]="prefix+'id_aed'">{{labels['id_aed']}}</label><input [id]="prefix+'id_aed'" [value]="device.id_aed" readonly/><small>Nadawany automatycznie, stały w zbiorze.</small></div>
   </div></fieldset>
 `})
@@ -77,6 +78,7 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
   dates:AedColumn[]=['data_waznosci_baterii','data_waznosci_elektrod','data_przegladu','data_weryfikacji'];
   hints:Record<string,string>={nazwa_miejsca:'Np. Biblioteka Miejska — wejście główne',teryt_gminy:'7 cyfr. Uzupełniamy automatycznie dla znanych miejscowości i z rejestru adresów.',ulica:'Pozostaw puste, jeśli miejscowość nie ma ulic.',kod_pocztowy:'Format 00-000',szerokosc_geograficzna:'WGS84, np. 53.1235. Możesz kliknąć mapę.',dlugosc_geograficzna:'WGS84, np. 18.0084. Możesz kliknąć mapę.',opis_lokalizacji:'Wejście, piętro, recepcja lub położenie skrzynki.'};
   raw:Record<string,string>={}; query=''; hits:RegistryAddress[]=[]; status=''; statusKind:'ok'|'warn'|''=''; busy=false;
+  private suggestTimer=0; private suggestGen=0;
   pointOffer:RegistryAddress|null=null; addressOffer:RegistryAddress|null=null;
   ngOnChanges(changes:SimpleChanges){
     this.raw={szerokosc_geograficzna:this.coordText(this.device.szerokosc_geograficzna),dlugosc_geograficzna:this.coordText(this.device.dlugosc_geograficzna)};
@@ -92,7 +94,32 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.placeMarker(true);
     setTimeout(()=>this.map?.invalidateSize(),0);
   }
-  ngOnDestroy(){ this.map?.remove(); }
+  ngOnDestroy(){ window.clearTimeout(this.suggestTimer); this.suggestGen++; this.map?.remove(); }
+  onQuery(){
+    window.clearTimeout(this.suggestTimer);
+    if(this.query.trim().length<3){ this.hits=[]; return; }
+    this.suggestTimer=window.setTimeout(()=>void this.loadSuggestions(), 300);
+  }
+  async loadSuggestions(){
+    const gen=++this.suggestGen; const text=this.query.trim();
+    try{
+      const hits=await suggestRegistry(text);
+      if(gen!==this.suggestGen)return;
+      this.hits=hits; this.pointOffer=null; this.addressOffer=null;
+      if(!hits.length && text.includes(',') && text.split(',')[1].trim().length>=2) this.report('Brak podpowiedzi w rejestrze. Dopisz numer albo wskaż punkt na mapie.','warn');
+      else if(hits.length) this.clearStatus();
+    }catch(e){ if(gen===this.suggestGen) this.report(e instanceof Error?e.message:'Nie udało się pobrać podpowiedzi.','warn'); }
+  }
+  choose(hit:RegistryAddress){
+    if(hit.kind==='adres'){ this.apply(hit); return; }
+    this.device.miejscowosc=hit.miejscowosc;
+    const teryt=terytFromRegistry(hit.miejscowosc,hit.teryt);
+    if(teryt)this.device.teryt_gminy=teryt;
+    if(hit.kind==='ulica') this.device.ulica=hit.ulica?`ul. ${hit.ulica}`:'';
+    this.query=hit.kind==='ulica'?`${hit.miejscowosc}, ${hit.ulica} `:`${hit.miejscowosc}, `;
+    this.changed.emit();
+    void this.loadSuggestions();
+  }
   private coordText(v:number|null){ return v===null||v===undefined||!Number.isFinite(v)?'':String(v); }
   isCoord(f:string){ return f==='szerokosc_geograficzna'||f==='dlugosc_geograficzna'; }
   setCoord(f:Coord, value:string){ this.raw[f]=value; const v=value.trim().replace(',','.'); this.device[f]=v===''?null:/^-?\d+(\.\d+)?$/.test(v)?Number(v):NaN; this.placeMarker(false); this.changed.emit(); }
@@ -102,7 +129,7 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.layer.clearLayers();
     const lat=this.device.szerokosc_geograficzna, lon=this.device.dlugosc_geograficzna;
     if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
-    this.leaflet.circleMarker([lat as number,lon as number],{radius:11,color:'#ffffff',weight:3,fillColor:'#b32636',fillOpacity:1}).addTo(this.layer);
+    this.leaflet.marker([lat as number,lon as number],{icon:this.leaflet.divIcon({className:'aed-pin is-active',iconSize:[32,28],iconAnchor:[16,26],html:''}),keyboard:false,alt:'Wybrany punkt'}).addTo(this.layer);
     if(pan)this.map.setView([lat as number,lon as number],Math.max(this.map.getZoom(),16));
   }
   async search(){

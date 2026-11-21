@@ -29,7 +29,7 @@ export class AedDemoInterceptor implements HttpInterceptor {
             : '<p>Ta strona portalu nie jest częścią prototypu Misji AED.</p>',
         });
       }
-      return ok({id:1,title:'Otwarte dane',body:[],over_login_section_cb:[],footer_nav:{blocks:[{id:'aed-footer',type:'raw_html',children:[],settings:{},value:'<div class="aed-footer"><strong>Dane, które pomagają.</strong><p>Moduł AED · Daj impuls</p><a href="/pl/aed/mapa">Znajdź AED</a> · <a href="/pl/aed/dolacz">Udostępnij dane</a></div>'}]},footer_logos:[],meta:{total_count:0},items:[]});
+      return ok({id:1,title:'Otwarte dane',body:[],over_login_section_cb:[],footer_nav:{blocks:[{id:'aed-footer',type:'raw_html',children:[],settings:{},value:'<div class="aed-footer"><strong>Dane, które pomagają.</strong><p>Mapa AED · dane.gov.pl</p><a href="/pl/aed/mapa">Znajdź AED</a> · <a href="/pl/aed/dolacz">Udostępnij dane</a></div>'}]},footer_logos:[],meta:{total_count:0},items:[]});
     }
     if(url.includes('/auth/')||url.includes('/users/me'))return throwError(()=>new HttpErrorResponse({status:401,error:{message:'Demonstracja bez sesji portalu'}}));
     // Safe, read-only stubs for the original portal shell; unknown writes fail explicitly.
