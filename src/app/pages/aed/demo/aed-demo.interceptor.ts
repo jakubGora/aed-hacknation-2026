@@ -19,6 +19,16 @@ export class AedDemoInterceptor implements HttpInterceptor {
     if(url.includes('/documents')||url.includes('/images'))return ok({meta:{total_count:0},items:[]});
     if(url.includes('/cms/')||url.includes('/api/v2/pages')){
       if(url.includes('/aed/')||url.includes('daj-impuls'))return ok(campaign);
+      if(url.includes('/page/')){
+        const rodo=url.includes('/page/rodo');
+        return ok({
+          id:1,
+          title:rodo?'Polityka prywatności i RODO':'Otwarte dane',
+          body:rodo
+            ? '<p>To jest prototyp na HackNation 2026. Nie wysyła danych osobowych na serwer.</p><p>Lokalizacje AED, które dodasz, zostają tylko w tej przeglądarce. Zamknięcie tej informacji też jest zapamiętywane lokalnie.</p>'
+            : '<p>Ta strona portalu nie jest częścią prototypu Misji AED.</p>',
+        });
+      }
       return ok({id:1,title:'Otwarte dane',body:[],over_login_section_cb:[],footer_nav:{blocks:[{id:'aed-footer',type:'raw_html',children:[],settings:{},value:'<div class="aed-footer"><strong>Dane, które pomagają.</strong><p>Moduł AED · Daj impuls</p><a href="/pl/aed/mapa">Znajdź AED</a> · <a href="/pl/aed/dolacz">Udostępnij dane</a></div>'}]},footer_logos:[],meta:{total_count:0},items:[]});
     }
     if(url.includes('/auth/')||url.includes('/users/me'))return throwError(()=>new HttpErrorResponse({status:401,error:{message:'Demonstracja bez sesji portalu'}}));
