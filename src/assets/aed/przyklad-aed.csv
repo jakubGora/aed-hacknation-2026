@@ -1,4 +1,4 @@
-﻿Lp;Numer seryjny;Nazwa obiektu;Miejscowość;Adres;Kod pocztowy;Szerokość;Długość;Lokalizacja;Godziny otwarcia;Stan;Ważność baterii;Ważność elektrod;Data sprawdzenia
+Lp;Numer seryjny;Nazwa obiektu;Miejscowość;Adres;Kod pocztowy;Szerokość;Długość;Lokalizacja;Godziny otwarcia;Stan;Ważność baterii;Ważność elektrod;Data sprawdzenia
 1;PHILIPS-HS1-10001;Dom Sąsiedzki;Bydgoszcz;ul. Gdańska 42;85-005;53,1320;18,0080;Przy wejściu głównym od ulicy;24/7;sprawny;31.12.2027;30.09.2027;18.11.2026
 2;;Klub Osiedlowy;Bydgoszcz;ul. Długa 25;;;18,0030;;pon.–pt. 8:00–16:00;;;;
 3;ZOLL-AED3-88421;Szkoła Podstawowa;Bydgoszcz;ul. Jagiellońska 31;85-097;53,1240;18,0150;Hol główny, obok portierni;"pon.–pt. 7:00–20:00, sob. 8:00–14:00";sprawny;2027-05-31;2027-03-31;2026-11-20

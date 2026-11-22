@@ -69,7 +69,7 @@ async function aedRuntime(): Promise<{ demo: boolean; apiUrl: string }> {
   }
 }
 
-if (location.pathname === '/' || location.pathname === '/pl') history.replaceState({}, '', '/pl/aed');
+if (location.pathname === '/' || location.pathname === '/pl' || location.pathname === '/pl/aed') history.replaceState({}, '', '/pl/aed/mapa');
 document.addEventListener('DOMContentLoaded', () => {
   aedRuntime().then((aed) => bootstrapApplication(AppComponent, {
     providers: [

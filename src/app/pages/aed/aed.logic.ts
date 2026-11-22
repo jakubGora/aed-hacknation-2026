@@ -192,17 +192,44 @@ export function csvEscape(value: unknown): string {
 export function exportCsv(rows: AedRow[]): string { return '\ufeff' + [AED_COLUMNS.map(c => c.name).join(','), ...rows.map(d => AED_COLUMNS.map(c => csvEscape(d[c.name])).join(','))].join('\r\n'); }
 export function exportJson(rows: AedRow[]): string { return JSON.stringify(rows.map(publicRow), null, 2); }
 
+function finalizeImportTable(rows: string[][]): {headers:string[]; rows:string[][]} {
+  const headers=rows.shift()?.map(v=>String(v??'').trim()) || [];
+  if(!headers.length || !rows.length)throw new Error('Plik musi zawierać nagłówki i co najmniej jeden rekord.');
+  if(new Set(headers).size!==headers.length)throw new Error('Nazwy kolumn muszą być unikalne.');
+  if(rows.length>500)throw new Error('W jednym imporcie możesz dodać maksymalnie 500 urządzeń.');
+  const normalized=rows.map(r=>{const copy=r.map(v=>String(v??'').trim()); while(copy.length<headers.length)copy.push(''); return copy.slice(0,headers.length);});
+  if(normalized.some(r=>r.length!==headers.length))throw new Error('Wiersze mają różną liczbę kolumn. Sprawdź separator i cudzysłowy.');
+  return {headers,rows:normalized};
+}
+
 export function parseCsv(input: string): {headers:string[]; rows:string[][]} {
   const text=input.replace(/^\ufeff/,''); if (text.length > 2*1024*1024) throw new Error('Maksymalny rozmiar pliku to 2 MB.');
   const first=text.split(/\r?\n/)[0] || ''; const separator=(first.match(/;/g)||[]).length >= (first.match(/,/g)||[]).length ? ';' : ',';
   const rows:string[][]=[]; let row:string[]=[]; let cell=''; let quote=false;
   for(let i=0;i<text.length;i++){const c=text[i]; if(c==='"'){ if(quote && text[i+1]==='"'){cell+='"';i++;}else quote=!quote; }else if(c===separator && !quote){row.push(cell);cell='';}else if((c==='\n'||c==='\r')&&!quote){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell='';}else cell+=c;}
   if(quote)throw new Error('Nie zamknięto cudzysłowu w pliku CSV.'); row.push(cell); if(row.some(v=>v.trim()))rows.push(row);
-  const headers=rows.shift()?.map(v=>v.trim()) || []; if(!headers.length || !rows.length)throw new Error('Plik musi zawierać nagłówki i co najmniej jeden rekord.');
-  if(new Set(headers).size!==headers.length)throw new Error('Nazwy kolumn muszą być unikalne.');
-  if(rows.length>500)throw new Error('W jednym imporcie możesz dodać maksymalnie 500 urządzeń.');
-  if(rows.some(r=>r.length!==headers.length))throw new Error('Wiersze mają różną liczbę kolumn. Sprawdź separator i cudzysłowy.');
-  return {headers,rows};
+  return finalizeImportTable(rows);
+}
+
+/** First sheet of an .xlsx/.xls workbook → same shape as parseCsv. */
+export async function parseXlsx(buffer: ArrayBuffer): Promise<{headers:string[]; rows:string[][]}> {
+  if (buffer.byteLength > 2*1024*1024) throw new Error('Maksymalny rozmiar pliku to 2 MB.');
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false });
+  const name = workbook.SheetNames[0];
+  if (!name) throw new Error('Plik nie zawiera arkusza.');
+  const sheet = workbook.Sheets[name];
+  const matrix = XLSX.utils.sheet_to_json<(string | number | Date | boolean | null | undefined)[]>(sheet, { header: 1, defval: '', blankrows: false });
+  const rows = matrix.map(row => (row || []).map(cell => {
+    if (cell instanceof Date && !Number.isNaN(cell.getTime())) {
+      const y = cell.getFullYear();
+      const m = String(cell.getMonth() + 1).padStart(2, '0');
+      const d = String(cell.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return String(cell ?? '').trim();
+  })).filter(row => row.some(v => v));
+  return finalizeImportTable(rows);
 }
 
 const ALIASES: Partial<Record<AedColumn, string[]>> = {

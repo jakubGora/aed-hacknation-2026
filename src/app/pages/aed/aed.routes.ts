@@ -1,11 +1,17 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
-import { catchError, map, of } from 'rxjs';
-import { AED_REPOSITORY } from './aed.repository';
+import { UserService } from '@app/services/user.service';
+import { AED_CONFIG } from './aed.repository';
 import { AedShellComponent } from './aed-shell.component';
-export const aedEditorGuard:CanActivateFn=()=>{const router=inject(Router);return inject(AED_REPOSITORY).context().pipe(map(c=>c.canEdit?true:router.createUrlTree(['/pl/aed/dolacz'])),catchError(()=>of(router.createUrlTree(['/pl/aed/dolacz']))));};
+export const aedEditorGuard:CanActivateFn=()=>{
+  const router=inject(Router);
+  const users=inject(UserService);
+  const config=inject(AED_CONFIG);
+  const ok=users.isLoggedIn()||(config.demo&&sessionStorage.getItem('aed-demo-editor')==='yes');
+  return ok||router.createUrlTree(['/pl/aed/dolacz']);
+};
 export const AED_ROUTES:Routes=[{path:'',component:AedShellComponent,children:[
- {path:'',pathMatch:'full',loadComponent:()=>import('@app/shared/cms/cms-landing-page/cms-landing-page.component').then(m=>m.CmsLandingPageComponent)},
+ {path:'',pathMatch:'full',redirectTo:'!mapa'},
  {path:'!dolacz',loadComponent:()=>import('./aed-shell.component').then(m=>m.AedJoinComponent)},
  {path:'!mapa',loadComponent:()=>import('./aed-public.component').then(m=>m.AedPublicComponent)},
  {path:'!urzadzenia/!:id',loadComponent:()=>import('./aed-detail.component').then(m=>m.AedDetailComponent)},

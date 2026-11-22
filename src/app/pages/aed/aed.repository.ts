@@ -43,7 +43,6 @@ function writeBody(device: AedDevice): Omit<AedDevice, 'id_aed' | 'data_aktualiz
 export class HttpAedRepository extends AedRepository {
   private http = inject(HttpClient); private config = inject(AED_CONFIG);
   private opts = { withCredentials: true };
-  /** Local BE has no /context yet — open the demo dysponent for the panel. */
   context() { return of<AedContext>({ dysponent: DEMO_DYSPONENT, canEdit: true }); }
   listPublic() {
     return this.http.get<(AedRow & Partial<AedDevice>)[]>(`${this.config.apiUrl}/devices`, this.opts).pipe(
