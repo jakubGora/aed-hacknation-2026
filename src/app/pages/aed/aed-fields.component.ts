@@ -6,7 +6,7 @@ import { LeafletService } from '@app/services/leflet.service';
 import type { LayerGroup, LeafletMouseEvent, Map } from 'leaflet';
 import { chooseHit, fieldSuggestionQuery, RegistryAddress, suggestRegistry, terytFromRegistry } from './aed-address';
 import { AED_COLUMNS, AedColumn, AedDevice, DOSTEPNOSC_LABELS, FIELD_LABELS, STAN_LABELS } from './aed.models';
-import { formatHours, suggestTeryt, terytFollowsPlace, toOpeningHours, today, validateDevice, validOpeningHours } from './aed.logic';
+import { DayHoursRow, FULL_DAY, decodeDayHours, encodeDayHours, formatHours, suggestTeryt, terytFollowsPlace, today, validateDevice, validOpeningHours } from './aed.logic';
 
 type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
 
@@ -39,9 +39,18 @@ type Coord = 'szerokosc_geograficzna' | 'dlugosc_geograficzna';
     <div class="aed-field"><label [for]="prefix+'dostepnosc'">Dostępność <span class="aed-required">(wymagane)</span></label><select [id]="prefix+'dostepnosc'" [(ngModel)]="device.dostepnosc" (ngModelChange)="changed.emit()"><option *ngFor="let a of accessKeys" [value]="a">{{access[a]}}</option></select><small [class.aed-error]="hasError('dostepnosc')" [class.aed-warning-text]="!hasError('dostepnosc')">{{message('dostepnosc')}}</small></div>
     <div class="aed-field"><label [for]="prefix+'stan_urzadzenia'">Stan urządzenia <span class="aed-required">(wymagane)</span></label><select [id]="prefix+'stan_urzadzenia'" [(ngModel)]="device.stan_urzadzenia" (ngModelChange)="changed.emit()"><option *ngFor="let c of stateKeys" [value]="c">{{states[c]}}</option></select><small class="aed-error" *ngIf="error('stan_urzadzenia')">{{error('stan_urzadzenia')}}</small></div>
     <div class="aed-field wide" *ngIf="device.dostepnosc==='w_godzinach'||device.dostepnosc==='ograniczona'">
-      <label [for]="prefix+'godziny_dostepnosci'">{{labels['godziny_dostepnosci']}} <span class="aed-required" *ngIf="device.dostepnosc==='w_godzinach'">(wymagane)</span></label>
-      <input [id]="prefix+'godziny_dostepnosci'" [(ngModel)]="device.godziny_dostepnosci" (ngModelChange)="changed.emit()" (blur)="normalizeHours()" placeholder="Mo-Fr 08:00-18:00; Sa 09:00-14:00" maxlength="200" [attr.aria-invalid]="hasError('godziny_dostepnosci')" [attr.aria-describedby]="prefix+'godziny-hint'"/>
-      <small [id]="prefix+'godziny-hint'" [class.aed-error]="hasError('godziny_dostepnosci')">{{error('godziny_dostepnosci') || (hoursPreview ? 'Odczyt: ' + hoursPreview : 'Format OpenStreetMap. Możesz wpisać też „pon.–pt. 8:00–18:00” — zamienimy to automatycznie.')}}</small>
+      <span class="aed-hours-heading" [id]="prefix+'godziny-label'">{{labels['godziny_dostepnosci']}} <span class="aed-required" *ngIf="device.dostepnosc==='w_godzinach'">(wymagane)</span></span>
+      <div class="aed-hours" role="group" [attr.aria-labelledby]="prefix+'godziny-label'" [attr.aria-invalid]="hasError('godziny_dostepnosci')" [attr.aria-describedby]="prefix+'godziny-hint'">
+        <div class="aed-hours-row" *ngFor="let row of dayHours" [class.is-off]="!row.on">
+          <label class="aed-hours-day"><input type="checkbox" [(ngModel)]="row.on" (ngModelChange)="toggleDay(row)" [attr.aria-label]="'Dostępne w dniu: ' + row.label"/>{{row.label}}</label>
+          <ng-container *ngIf="row.on">
+            <input type="time" [(ngModel)]="row.open" (ngModelChange)="syncHours()" [attr.aria-label]="'Od — ' + row.label"/>
+            <span class="aed-hours-sep" aria-hidden="true">–</span>
+            <input type="time" [(ngModel)]="row.close" (ngModelChange)="syncHours()" [attr.aria-label]="'Do — ' + row.label"/>
+          </ng-container>
+        </div>
+      </div>
+      <small [id]="prefix+'godziny-hint'" [class.aed-error]="hasError('godziny_dostepnosci')">{{error('godziny_dostepnosci') || (hoursPreview ? 'Zapis: ' + hoursPreview : 'Zaznacz dzień, a wpisze się cała doba. Godziny możesz potem zmienić.')}}</small>
     </div>
     <div class="aed-field wide" *ngIf="device.dostepnosc==='ograniczona'||device.uwagi_dostepu">
       <label [for]="prefix+'uwagi_dostepu'">{{labels['uwagi_dostepu']}} <span class="aed-required" *ngIf="device.dostepnosc==='ograniczona'">(wymagane)</span></label>
@@ -67,12 +76,20 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
   locationFields:AedColumn[]=['nazwa_miejsca','miejscowosc','teryt_gminy','ulica','numer_budynku','kod_pocztowy','opis_lokalizacji'];
   dates:AedColumn[]=['data_waznosci_baterii','data_waznosci_elektrod','data_przegladu','data_weryfikacji'];
   raw:Record<string,string>={}; fieldHits:RegistryAddress[]=[]; suggestField=''; placePoint:{miejscowosc:string;lat:number;lon:number}|null=null; postalPlace=''; status=''; statusKind:'ok'|'warn'|''=''; busy=false;
+  dayHours:DayHoursRow[]=decodeDayHours('');
   private suggestTimer=0; private suggestGen=0; private locateTimer=0; private locateGen=0;
   private lastHit:RegistryAddress|null=null; private resolvedKey=''; private postalAuto=false; private coordsAuto=false;
   private locationCache:{street:RegistryAddress|null;city:RegistryAddress|null}={street:null,city:null};
+  private hoursSource='';
   ngOnChanges(changes:SimpleChanges){
     this.raw={szerokosc_geograficzna:this.coordText(this.device.szerokosc_geograficzna),dlugosc_geograficzna:this.coordText(this.device.dlugosc_geograficzna)};
-    if(changes['device'] && !changes['device'].firstChange){ this.fieldHits=[]; this.suggestField=''; this.clearStatus(); }
+    if(changes['device']){
+      if(this.device.godziny_dostepnosci!==this.hoursSource){
+        this.dayHours=decodeDayHours(this.device.godziny_dostepnosci);
+        this.hoursSource=this.device.godziny_dostepnosci;
+      }
+      if(!changes['device'].firstChange){ this.fieldHits=[]; this.suggestField=''; this.clearStatus(); }
+    }
     this.placeMarker(true);
   }
   ngAfterViewInit(){
@@ -276,7 +293,15 @@ export class AedFieldsComponent implements AfterViewInit, OnChanges, OnDestroy {
       if(teryt){ this.device.teryt_gminy=teryt; this.changed.emit(); }
     }catch{ /* the code stays empty and can be typed by hand */ }
   }
-  normalizeHours(){ const v=toOpeningHours(this.device.godziny_dostepnosci); if(v!==this.device.godziny_dostepnosci){ this.device.godziny_dostepnosci=v; this.changed.emit(); } }
+  toggleDay(row:DayHoursRow){
+    if(row.on){ row.open=FULL_DAY.open; row.close=FULL_DAY.close; }
+    this.syncHours();
+  }
+  syncHours(){
+    const value=encodeDayHours(this.dayHours);
+    this.hoursSource=value;
+    if(value!==this.device.godziny_dostepnosci){ this.device.godziny_dostepnosci=value; this.changed.emit(); }
+  }
   get hoursPreview(){ return validOpeningHours(this.device.godziny_dostepnosci)?formatHours(this.device.godziny_dostepnosci):''; }
   required(f:string){ return AED_COLUMNS.find(c=>c.name===f)?.required==='tak'; }
   error(f:string){return this.showErrors?validateDevice(this.device).find(i=>i.field===f&&i.severity==='error')?.message||'':'';}

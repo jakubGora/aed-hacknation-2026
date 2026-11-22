@@ -1,4 +1,4 @@
 {
-  "demo": true,
-  "apiUrl": "/api/aed/v1"
+  "demo": false,
+  "apiUrl": "/api/aed"
 }

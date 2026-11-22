@@ -20,6 +20,81 @@ const OPENING_HOURS = new RegExp(`^(?:24/7|(?:${DAYS} )?${TIMES}(?:; ?(?:${DAYS}
 /** Subset of the OpenStreetMap opening_hours syntax, e.g. "Mo-Fr 08:00-16:00; Sa 09:00-14:00". */
 export function validOpeningHours(s: string): boolean { return OPENING_HOURS.test(s.trim()); }
 
+export const WEEKDAYS = [
+  { code: 'Mo', label: 'Poniedziałek' },
+  { code: 'Tu', label: 'Wtorek' },
+  { code: 'We', label: 'Środa' },
+  { code: 'Th', label: 'Czwartek' },
+  { code: 'Fr', label: 'Piątek' },
+  { code: 'Sa', label: 'Sobota' },
+  { code: 'Su', label: 'Niedziela' },
+] as const;
+export type WeekdayCode = (typeof WEEKDAYS)[number]['code'];
+export type DayHoursRow = { code: WeekdayCode; label: string; on: boolean; open: string; close: string };
+
+const WEEKDAY_INDEX: Record<WeekdayCode, number> = { Mo: 0, Tu: 1, We: 2, Th: 3, Fr: 4, Sa: 5, Su: 6 };
+
+export const FULL_DAY = { open: '00:00', close: '23:59' } as const;
+
+export function emptyDayHours(): DayHoursRow[] {
+  return WEEKDAYS.map((d) => ({ code: d.code, label: d.label, on: false, open: FULL_DAY.open, close: FULL_DAY.close }));
+}
+
+function expandDaySpec(spec: string): number[] {
+  const out: number[] = [];
+  for (const part of spec.split(',')) {
+    const [a, b] = part.trim().split('-') as [WeekdayCode, WeekdayCode | undefined];
+    if (!(a in WEEKDAY_INDEX)) continue;
+    const start = WEEKDAY_INDEX[a];
+    const end = b && b in WEEKDAY_INDEX ? WEEKDAY_INDEX[b] : start;
+    if (start <= end) for (let i = start; i <= end; i++) out.push(i);
+    else {
+      for (let i = start; i <= 6; i++) out.push(i);
+      for (let i = 0; i <= end; i++) out.push(i);
+    }
+  }
+  return [...new Set(out)];
+}
+
+/** Build OSM opening_hours from the day picker (one interval per day). */
+export function encodeDayHours(rows: DayHoursRow[]): string {
+  const groups: { start: number; end: number; open: string; close: string }[] = [];
+  rows.forEach((row, index) => {
+    if (!row.on || !/^\d{2}:\d{2}$/.test(row.open) || !/^\d{2}:\d{2}$/.test(row.close)) return;
+    const last = groups[groups.length - 1];
+    if (last && last.end === index - 1 && last.open === row.open && last.close === row.close) last.end = index;
+    else groups.push({ start: index, end: index, open: row.open, close: row.close });
+  });
+  return groups
+    .map((g) => {
+      const days = g.start === g.end ? WEEKDAYS[g.start].code : `${WEEKDAYS[g.start].code}-${WEEKDAYS[g.end].code}`;
+      return `${days} ${g.open}-${g.close}`;
+    })
+    .join('; ');
+}
+
+/** Fill the day picker from an OSM string. Only the first interval of each day is kept. */
+export function decodeDayHours(text: string): DayHoursRow[] {
+  const rows = emptyDayHours();
+  const value = toOpeningHours((text || '').trim());
+  if (!value) return rows;
+  if (value === '24/7') return rows.map((r) => ({ ...r, on: true, open: '00:00', close: '23:59' }));
+  if (!validOpeningHours(value)) return rows;
+  for (const rule of value.split(';')) {
+    const trimmed = rule.trim();
+    if (!trimmed || /\boff\b/i.test(trimmed)) continue;
+    const m = trimmed.match(/^(?:((?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?(?:,(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?)*)\s+)?(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    if (!m) continue;
+    const days = expandDaySpec(m[1] || 'Mo-Su');
+    const open = m[2];
+    const close = m[3] === '24:00' ? '23:59' : m[3];
+    for (const i of days) {
+      if (!rows[i].on) rows[i] = { ...rows[i], on: true, open, close };
+    }
+  }
+  return rows;
+}
+
 const PL_DAYS: Record<string, string> = { Mo: 'pon.', Tu: 'wt.', We: 'śr.', Th: 'czw.', Fr: 'pt.', Sa: 'sob.', Su: 'niedz.', PH: 'święta' };
 export function formatHours(s: string): string {
   if (!s) return '';
@@ -77,8 +152,8 @@ export function validateDevice(d: AedRow, now = today()): Issue[] {
   if (d.regon_dysponenta && !isRegon(d.regon_dysponenta)) error('regon_dysponenta', 'Niepoprawny REGON dysponenta.');
   if (!['calodobowa','w_godzinach','ograniczona','nieznana'].includes(d.dostepnosc)) error('dostepnosc', 'Wybierz dostępność ze słownika.');
   if (!['sprawne','niesprawne','nieznany'].includes(d.stan_urzadzenia)) error('stan_urzadzenia', 'Wybierz stan urządzenia ze słownika.');
-  if (d.dostepnosc === 'w_godzinach' && !d.godziny_dostepnosci.trim()) error('godziny_dostepnosci', 'Podaj godziny dostępności, np. Mo-Fr 08:00-16:00.');
-  else if (d.godziny_dostepnosci.trim() && !validOpeningHours(d.godziny_dostepnosci)) error('godziny_dostepnosci', 'Zapisz godziny w formacie Mo-Fr 08:00-16:00; Sa 09:00-14:00.');
+  if (d.dostepnosc === 'w_godzinach' && !d.godziny_dostepnosci.trim()) error('godziny_dostepnosci', 'Zaznacz dni i podaj godziny dostępności.');
+  else if (d.godziny_dostepnosci.trim() && !validOpeningHours(d.godziny_dostepnosci)) error('godziny_dostepnosci', 'Uzupełnij godziny od–do dla zaznaczonych dni.');
   if (d.dostepnosc === 'ograniczona' && !d.uwagi_dostepu.trim()) error('uwagi_dostepu', 'Opisz, jak uzyskać dostęp do urządzenia.');
   for (const key of ['data_waznosci_baterii','data_waznosci_elektrod','data_przegladu','data_weryfikacji'] as const) {
     const value = d[key];

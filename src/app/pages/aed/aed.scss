@@ -13,6 +13,16 @@
 @media(max-width:700px){.aed-module{padding-bottom:32px}.aed-module>.container{padding:0 18px}.aed-module h1{font-size:2rem}.aed-module-bar{flex-direction:column;gap:12px;margin-bottom:24px}.aed-module-bar nav{width:100%;gap:20px}.aed-module-bar nav a{font-size:.85rem}.aed-hero{grid-template-columns:1fr;padding-top:0;gap:12px}.aed-hero h1{font-size:2.4rem}.aed-hero img{max-width:300px;justify-self:center}.aed-how,.aed-join-grid,.aed-detail-layout,.aed-explorer,.aed-review-layout{grid-template-columns:1fr}.aed-how{gap:18px}.aed-campaign-cta{flex-direction:column;align-items:start;padding:24px}.aed-summary>div{padding:14px 12px}.aed-summary span{font-size:.75rem}.aed-summary strong{font-size:1.5rem}.aed-filterbar>*{width:100%;flex-basis:100%}.aed-result-heading{flex-direction:column;gap:4px}.aed-explorer aed-map{grid-row:1}.aed-map{height:330px;min-height:280px}.aed-results{max-height:none}.aed-form-grid{grid-template-columns:1fr}.aed-table{min-width:700px}.aed-steps{gap:15px}.aed-steps li{font-size:.8rem}.aed-review-detail{padding:16px}.aed-import-footer{flex-direction:column;align-items:start}.aed-demo-banner{flex-direction:column;gap:4px}.aed-join-option{padding:22px}.aed-upload{padding:30px 16px}.aed-facts{grid-template-columns:1fr;gap:4px}.aed-facts dd{margin-bottom:12px}}
 html[class*="black-"] .aed-module,html[class*="yellow-"] .aed-module,body[class*="black-"] .aed-module,body[class*="yellow-"] .aed-module{filter:contrast(1.25)}
 .aed-locate{margin-top:4px}.aed-locate>.aed-button{align-self:flex-start}.aed-locate .aed-form-grid{margin-top:4px}
+.aed-hours-heading{font-size:.9rem;font-weight:600;line-height:1.5}
+.aed-hours{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid #9eafbf;border-radius:4px;background:#fff}
+.aed-hours[aria-invalid=true]{border:2px solid #b32636}
+.aed-hours-row{display:grid;grid-template-columns:minmax(9rem,1.2fr) minmax(7rem,1fr) auto minmax(7rem,1fr);align-items:center;gap:10px}
+.aed-hours-day{display:flex;align-items:center;gap:10px;margin:0;font-weight:500;font-size:.95rem}
+.aed-hours-day input[type=checkbox]{width:18px;height:18px;min-height:0;accent-color:var(--aed-blue)}
+.aed-hours-row input[type=time]{min-height:42px;padding:8px 10px}
+.aed-hours-sep{color:var(--aed-muted);text-align:center}
+.aed-hours-row.is-off{grid-template-columns:1fr}
+@media(max-width:700px){.aed-hours-row{grid-template-columns:1fr 1fr;grid-template-areas:"day day" "open sep" "close close"}.aed-hours-day{grid-area:day}.aed-hours-row input[type=time]:first-of-type{grid-column:1}.aed-hours-sep{grid-column:2;justify-self:start}}
 .aed-picker-map{height:300px;border:1px solid var(--aed-border);border-radius:4px}
 .aed-combobox{position:relative;flex:1;min-width:0}
 .aed-field:has(.aed-address-hits){position:relative;z-index:30}

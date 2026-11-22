@@ -1,10 +1,11 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, defer, of } from 'rxjs';
+import { Observable, defer, firstValueFrom, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AedContext, AedDevice, AedRow, Dysponent, EMPTY_DEVICE } from './aed.models';
 import { publicRow, sameDevice, serialKey, validateDevice } from './aed.logic';
 
-export const AED_CONFIG = new InjectionToken<{demo:boolean; apiUrl:string}>('AED_CONFIG',{providedIn:'root',factory:()=>({demo:false,apiUrl:'/api/aed/v1'})});
+export const AED_CONFIG = new InjectionToken<{demo:boolean; apiUrl:string}>('AED_CONFIG',{providedIn:'root',factory:()=>({demo:false,apiUrl:'/api/aed'})});
 export type ImportResult = { added: number; skipped: number };
 
 export abstract class AedRepository {
@@ -17,19 +18,64 @@ export abstract class AedRepository {
   abstract import(devices: AedDevice[]): Observable<ImportResult>;
 }
 
+/** Map BE payload to the panel shape (history is frontend-only today). */
+function asDevice(row: AedRow & Partial<AedDevice>): AedDevice {
+  return {
+    ...row,
+    id_zrodlowe: row.id_zrodlowe || '',
+    godziny_dostepnosci: row.godziny_dostepnosci || '',
+    uwagi_dostepu: row.uwagi_dostepu || '',
+    data_przegladu: row.data_przegladu || '',
+    data_weryfikacji: row.data_weryfikacji || '',
+    status: row.status || 'published',
+    revision: row.revision ?? 0,
+    history: row.history || [],
+  };
+}
+
+/** Body for create/update: server owns id_aed, data_aktualizacji, revision and history. */
+function writeBody(device: AedDevice): Omit<AedDevice, 'id_aed' | 'data_aktualizacji' | 'revision' | 'history'> {
+  const { id_aed: _id, data_aktualizacji: _updated, revision: _rev, history: _history, ...body } = device;
+  return body;
+}
+
 @Injectable({providedIn:'root'})
 export class HttpAedRepository extends AedRepository {
   private http = inject(HttpClient); private config = inject(AED_CONFIG);
   private opts = { withCredentials: true };
-  context() { return this.http.get<AedContext>(`${this.config.apiUrl}/context`, this.opts); }
-  listPublic() { return this.http.get<AedRow[]>(`${this.config.apiUrl}/public/devices`, this.opts); }
-  listMine() { return this.http.get<AedDevice[]>(`${this.config.apiUrl}/devices`, this.opts); }
-  save(d: AedDevice) {
-    return d.id_aed
-      ? this.http.put<AedDevice>(`${this.config.apiUrl}/devices/${encodeURIComponent(d.id_aed)}`, d, { ...this.opts, headers: { 'If-Match': String(d.revision) } })
-      : this.http.post<AedDevice>(`${this.config.apiUrl}/devices`, d, this.opts);
+  /** Local BE has no /context yet — open the demo dysponent for the panel. */
+  context() { return of<AedContext>({ dysponent: DEMO_DYSPONENT, canEdit: true }); }
+  listPublic() {
+    return this.http.get<(AedRow & Partial<AedDevice>)[]>(`${this.config.apiUrl}/devices`, this.opts).pipe(
+      map(rows => rows.map(r => publicRow(asDevice(r)))),
+    );
   }
-  import(devices: AedDevice[]) { return this.http.post<ImportResult>(`${this.config.apiUrl}/imports`, { devices }, this.opts); }
+  listMine() {
+    return this.http.get<(AedRow & Partial<AedDevice>)[]>(`${this.config.apiUrl}/devices`, this.opts).pipe(
+      map(rows => rows.map(asDevice)),
+    );
+  }
+  save(d: AedDevice) {
+    const body = writeBody(d);
+    return d.id_aed
+      ? this.http.put<AedDevice>(`${this.config.apiUrl}/devices/${encodeURIComponent(d.id_aed)}`, body, this.opts).pipe(map(asDevice))
+      : this.http.post<AedDevice>(`${this.config.apiUrl}/devices`, body, this.opts).pipe(map(asDevice));
+  }
+  import(devices: AedDevice[]) {
+    return defer(async () => {
+      let added = 0;
+      let skipped = 0;
+      for (const device of devices) {
+        try {
+          await firstValueFrom(this.http.post(`${this.config.apiUrl}/devices`, writeBody(device), this.opts));
+          added++;
+        } catch {
+          skipped++;
+        }
+      }
+      return { added, skipped };
+    });
+  }
 }
 
 export const DEMO_DYSPONENT: Dysponent = { regon: '123456785', nazwa: 'Miejskie Centrum Aktywności', portal_institution_id: null };
