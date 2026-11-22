@@ -9,6 +9,11 @@ Frontend modułu AED na bazie portalu [dane.gov.pl](https://dane.gov.pl). Lokaln
 | Frontend (to repo) | https://github.com/jakubGora/aed-hacknation-2026 |
 | Backend | https://github.com/ArkadiuszGrzyb/otwarte-dane-aed |
 
+## Identyfikacja graficzna
+
+Księga znaku / materiały graficzne Mapa AED:  
+https://drive.google.com/drive/folders/1zp-LIjWOMSnxs8OJStxXcAXzhZPdQ0j7?usp=sharing
+
 ## Wymagania
 
 - Node.js ≥ 20, npm ≥ 8
